@@ -1,67 +1,78 @@
 package com.osuplayer;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Properties;
 
 public class ConfigManager {
 
-    private static final String CONFIG_FILE = System.getenv("APPDATA") + File.separator + "Osulux" + File.separator + "config.properties";
+    private static final String CONFIG_FILE = "config.properties";
 
-    private String lastFolder;
-    private double volume = 0.5;
+    private Properties properties = new Properties();
 
     public void loadConfig() {
-        File configFile = new File(CONFIG_FILE);
-        if (!configFile.exists()) return;
-
-        try (InputStream input = new FileInputStream(configFile)) {
-            Properties props = new Properties();
-            props.load(input);
-            String volumeStr = props.getProperty("volume");
-            String folderStr = props.getProperty("lastFolder");
-            if (volumeStr != null) volume = Double.parseDouble(volumeStr);
-            if (folderStr != null && !folderStr.isBlank()) lastFolder = folderStr;
+        try (FileInputStream in = new FileInputStream(CONFIG_FILE)) {
+            properties.load(in);
         } catch (IOException e) {
-            e.printStackTrace();
+            // archivo no existe o no se pudo leer, usar valores por defecto
         }
     }
 
     public void saveConfig(double volume) {
-        saveConfig(lastFolder, volume);
-    }
-
-    public void saveConfig(String folder, double volume) {
-        try {
-            File configFile = new File(CONFIG_FILE);
-            File parentDir = configFile.getParentFile();
-            if (!parentDir.exists()) parentDir.mkdirs();
-
-            Properties props = new Properties();
-            props.setProperty("volume", String.valueOf(volume));
-            if (folder != null) props.setProperty("lastFolder", folder);
-
-            try (OutputStream output = new FileOutputStream(configFile)) {
-                props.store(output, "OSU Music Player Config");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public String getLastFolder() {
-        return lastFolder;
-    }
-
-    public void setLastFolder(String folder) {
-        this.lastFolder = folder;
+        properties.setProperty("volume", Double.toString(volume));
+        savePropertiesToFile();
     }
 
     public double getVolume() {
-        return volume;
+        String vol = properties.getProperty("volume");
+        if (vol != null) {
+            try {
+                return Double.parseDouble(vol);
+            } catch (NumberFormatException e) {
+                return 0.5;
+            }
+        }
+        return 0.5;
+    }
+
+    public void setLastFolder(String path) {
+        properties.setProperty("lastFolder", path);
+        savePropertiesToFile();
+    }
+
+    public String getLastFolder() {
+        return properties.getProperty("lastFolder");
+    }
+
+    // Métodos para canción actual y posición
+    public void saveCurrentSong(String songName, double position) {
+        properties.setProperty("currentSong", songName);
+        properties.setProperty("currentPosition", Double.toString(position));
+        savePropertiesToFile();
+    }
+
+    public String getCurrentSong() {
+        return properties.getProperty("currentSong");
+    }
+
+    public double getCurrentPosition() {
+        String pos = properties.getProperty("currentPosition");
+        if (pos != null) {
+            try {
+                return Double.parseDouble(pos);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private void savePropertiesToFile() {
+        try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
+            properties.store(out, "OSU! Music Player config");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
