@@ -1,19 +1,12 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "java",
-            "name": "Current File",
-            "request": "launch",
-            "mainClass": "${file}"
-        },
-        {
-            "type": "java",
-            "name": "OsuMusicPlayer",
-            "request": "launch",
-            "mainClass": "com.osuplayer.OsuMusicPlayer",
-            "projectName": "osu-music-player",
-            "vmArgs": "--module-path \"C:\\\\Program Files\\\\Java\\\\javafx-sdk-21.0.8\\\\lib\" --add-modules javafx.controls,javafx.media"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Launch OsuMusicPlayer JavaFX",
+      "request": "launch",
+      "mainClass": "com.osuplayer.OsuMusicPlayer",
+      "vmArgs": "--enable-preview --enable-native-access=javafx.graphics --module-path \"C:/javafx-sdk-21/lib\" --add-modules javafx.controls,javafx.fxml,javafx.media"
+    }
+  ]
 }

@@ -1,1 +1,4 @@
-com\osuplayer\OsuMusicPlayer.class
+com\osuplayer\MainApp.class
+com\osuplayer\UIController.class
+com\osuplayer\ConfigManager.class
+com\osuplayer\MusicManager.class
