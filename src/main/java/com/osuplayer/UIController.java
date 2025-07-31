@@ -1,8 +1,11 @@
 package com.osuplayer;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Stack;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -11,8 +14,10 @@ import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -47,10 +52,17 @@ public class UIController {
     private Label currentSongLabel = new Label("Sin canción");
     private ImageView coverImageView = new ImageView();
 
-    // Estado de reproducción
-    private boolean isPlaying = false;
-    private String lastSong = "";
-    private double lastPosition = 0.0;
+    // Historial de canciones
+    private Stack<String> playHistory = new Stack<>();
+
+    // Botones
+    private Button shuffleButton;
+    private Button playPauseButton;
+    private Button favoritesToggleButton;
+
+    // Lista de favoritos
+    private List<String> favorites = new ArrayList<>();
+    private boolean showingFavorites = false;
 
     public UIController() {
         musicManager = new MusicManager();
@@ -63,27 +75,23 @@ public class UIController {
         configManager.loadConfig();
         volumeSlider.setValue(configManager.getVolume());
 
-        Button chooseFolderButton = new Button("Seleccionar carpeta de canciones");
+        Button chooseFolderButton = new Button("Seleccionar carpeta");
         TextField searchField = new TextField();
-        searchField.setPromptText("Buscar canciones o artistas...");
+        searchField.setPromptText("Buscar canciones...");
 
-        Button previousButton = new Button("⏮");
-        Button playPauseButton = new Button("▶");
-        Button stopButton = new Button("⏹");
-        Button nextButton = new Button("⏭");
+        Button previousButton = createControlButton("⏮");
+        playPauseButton = createControlButton("▶");
+        Button stopButton = createControlButton("⏹");
+        Button nextButton = createControlButton("⏭");
+        shuffleButton = createControlButton("🔀");
 
-        Button shuffleButton = new Button("🔀");
-        shuffleButton.setPrefSize(40, 30);
-        playPauseButton.setPrefSize(40, 30);
-        previousButton.setPrefSize(40, 30);
-        stopButton.setPrefSize(40, 30);
-        nextButton.setPrefSize(40, 30);
+        // Botón favoritos (estrella)
+        favoritesToggleButton = new Button("☆");
+        favoritesToggleButton.setStyle("-fx-font-size: 18px;");
+        favoritesToggleButton.setOnAction(e -> toggleFavoritesView());
 
+        updateShuffleButtonStyle();
         shuffleButton.setOnAction(e -> toggleShuffle());
-        playPauseButton.setOnAction(e -> togglePlayPause(playPauseButton));
-        stopButton.setOnAction(e -> stopSong());
-        previousButton.setOnAction(e -> playPreviousSong());
-        nextButton.setOnAction(e -> playNextSong());
 
         chooseFolderButton.setOnAction(e -> {
             DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -97,11 +105,68 @@ public class UIController {
             }
         });
 
+        previousButton.setOnAction(e -> playPreviousSong());
+
+        playPauseButton.setOnAction(e -> {
+            if (mediaPlayer == null) {
+                playSelectedSong();
+                playPauseButton.setText("⏸");
+            } else {
+                MediaPlayer.Status status = mediaPlayer.getStatus();
+                if (status == MediaPlayer.Status.PLAYING) {
+                    mediaPlayer.pause();
+                    playPauseButton.setText("▶");
+                } else {
+                    mediaPlayer.play();
+                    playPauseButton.setText("⏸");
+                }
+            }
+        });
+
+        stopButton.setOnAction(e -> {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                playPauseButton.setText("▶");
+                if (!playHistory.isEmpty()) {
+                    String currentSong = playHistory.peek();
+                    double position = mediaPlayer.getCurrentTime().toSeconds();
+                    configManager.saveCurrentSong(currentSong, position);
+                }
+            }
+        });
+
+        nextButton.setOnAction(e -> playNextSong());
+
         songListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 playSelectedSong();
+                playPauseButton.setText("⏸");
             }
         });
+
+        // Menú contextual (click derecho)
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem addToFav = new MenuItem("Añadir a favoritos");
+        MenuItem removeFromFav = new MenuItem("Eliminar de favoritos");
+        contextMenu.getItems().addAll(addToFav, removeFromFav);
+
+        addToFav.setOnAction(e -> {
+            String selected = songListView.getSelectionModel().getSelectedItem();
+            if (selected != null && !favorites.contains(selected)) {
+                favorites.add(selected);
+                configManager.saveFavorites(favorites);
+            }
+        });
+
+        removeFromFav.setOnAction(e -> {
+            String selected = songListView.getSelectionModel().getSelectedItem();
+            if (selected != null && favorites.contains(selected)) {
+                favorites.remove(selected);
+                configManager.saveFavorites(favorites);
+            }
+        });
+
+        songListView.setContextMenu(contextMenu);
 
         progressSlider.setMin(0);
         progressSlider.setMax(1);
@@ -135,7 +200,7 @@ public class UIController {
         HBox progressBox = new HBox(10, progressSlider, timeLabel);
         progressBox.setAlignment(Pos.CENTER);
 
-        HBox topBox = new HBox(10, chooseFolderButton, searchField);
+        HBox topBox = new HBox(10, chooseFolderButton, searchField, favoritesToggleButton);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         BorderPane root = new BorderPane();
@@ -161,49 +226,52 @@ public class UIController {
             filteredSongList.setPredicate(item -> item != null && item.toLowerCase().contains(lowerFilter));
         });
 
+        favorites = configManager.getFavorites();
+
         if (musicManager.getLastFolderPath() != null) {
             File folder = new File(musicManager.getLastFolderPath());
             if (folder.exists() && folder.isDirectory()) loadSongs(folder);
         }
 
-        // Restaurar última canción y posición
-        lastSong = configManager.getCurrentSong();
-        lastPosition = configManager.getCurrentPosition();
-        if (!lastSong.isEmpty()) {
-            songListView.getSelectionModel().select(lastSong);
-            playSelectedSong();
-            if (mediaPlayer != null) mediaPlayer.seek(Duration.seconds(lastPosition));
+        String lastSong = configManager.getCurrentSong();
+        double lastPosition = configManager.getCurrentPosition();
+        if (lastSong != null && !lastSong.isEmpty() && musicManager.getSongPath(lastSong) != null) {
+            playHistory.push(lastSong);
+            playSelectedSongFromHistory(lastSong, lastPosition);
+            playPauseButton.setText("⏸");
         }
+    }
+
+    private Button createControlButton(String text) {
+        Button btn = new Button(text);
+        btn.setPrefWidth(40);
+        btn.setPrefHeight(30);
+        btn.setFocusTraversable(false);
+        return btn;
     }
 
     private void toggleShuffle() {
         shuffleEnabled = !shuffleEnabled;
+        updateShuffleButtonStyle();
     }
 
-    private void togglePlayPause(Button button) {
-        if (mediaPlayer == null) {
-            playSelectedSong();
-            button.setText("⏸");
-            isPlaying = true;
+    private void updateShuffleButtonStyle() {
+        if (shuffleEnabled) {
+            shuffleButton.setStyle("-fx-background-color: #00cc00; -fx-text-fill: white;");
         } else {
-            if (isPlaying) {
-                mediaPlayer.pause();
-                button.setText("▶");
-                isPlaying = false;
-            } else {
-                mediaPlayer.play();
-                button.setText("⏸");
-                isPlaying = true;
-            }
+            shuffleButton.setStyle("");
         }
     }
 
-    private void stopSong() {
-        if (mediaPlayer != null) {
-            configManager.saveCurrentSong(songListView.getSelectionModel().getSelectedItem(), mediaPlayer.getCurrentTime().toSeconds());
-            mediaPlayer.stop();
-            isPlaying = false;
+    private void toggleFavoritesView() {
+        if (showingFavorites) {
+            filteredSongList.setPredicate(s -> true);
+            favoritesToggleButton.setText("☆");
+        } else {
+            filteredSongList.setPredicate(s -> favorites.contains(s));
+            favoritesToggleButton.setText("★");
         }
+        showingFavorites = !showingFavorites;
     }
 
     private void loadSongs(File folder) {
@@ -220,7 +288,16 @@ public class UIController {
         String selected = songListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
-        String path = musicManager.getSongPath(selected);
+        if (playHistory.isEmpty() || !playHistory.peek().equals(selected)) {
+            playHistory.push(selected);
+        }
+        playSelectedSongFromHistory(selected, 0);
+    }
+
+    private void playSelectedSongFromHistory(String song, double startPosition) {
+        if (song == null) return;
+
+        String path = musicManager.getSongPath(song);
         if (path == null) return;
 
         if (mediaPlayer != null) mediaPlayer.stop();
@@ -228,13 +305,14 @@ public class UIController {
         mediaPlayer = new MediaPlayer(media);
         mediaPlayer.setVolume(volumeSlider.getValue());
 
-        currentSongLabel.setText(selected);
+        currentSongLabel.setText(song);
         updateCoverImage(path);
 
         mediaPlayer.setOnReady(() -> {
             double totalSeconds = media.getDuration().toSeconds();
             progressSlider.setMax(totalSeconds);
-            updateTimeLabel(0, totalSeconds);
+            updateTimeLabel(startPosition, totalSeconds);
+            mediaPlayer.seek(Duration.seconds(startPosition));
         });
 
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
@@ -250,7 +328,6 @@ public class UIController {
 
         mediaPlayer.setOnEndOfMedia(() -> Platform.runLater(this::playNextSong));
         mediaPlayer.play();
-        isPlaying = true;
     }
 
     private void updateCoverImage(String songPath) {
@@ -268,26 +345,33 @@ public class UIController {
     }
 
     private void playPreviousSong() {
-        int idx = songListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            songListView.getSelectionModel().select(idx - 1);
-            playSelectedSong();
+        if (playHistory.size() > 1) {
+            playHistory.pop();
+            String previousSong = playHistory.peek();
+            songListView.getSelectionModel().select(previousSong);
+            playSelectedSongFromHistory(previousSong, 0);
         }
     }
 
     private void playNextSong() {
         if (shuffleEnabled) {
             int randomIndex = random.nextInt(songListView.getItems().size());
-            songListView.getSelectionModel().select(randomIndex);
+            String randomSong = songListView.getItems().get(randomIndex);
+            playHistory.push(randomSong);
+            songListView.getSelectionModel().select(randomSong);
         } else {
             int idx = songListView.getSelectionModel().getSelectedIndex();
             if (idx < songListView.getItems().size() - 1) {
-                songListView.getSelectionModel().select(idx + 1);
+                String nextSong = songListView.getItems().get(idx + 1);
+                playHistory.push(nextSong);
+                songListView.getSelectionModel().select(nextSong);
             } else {
-                songListView.getSelectionModel().select(0);
+                String firstSong = songListView.getItems().get(0);
+                playHistory.push(firstSong);
+                songListView.getSelectionModel().select(firstSong);
             }
         }
-        playSelectedSong();
+        playSelectedSongFromHistory(songListView.getSelectionModel().getSelectedItem(), 0);
     }
 
     private void updateTimeLabel(double currentSeconds, double totalSeconds) {

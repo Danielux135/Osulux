@@ -4,54 +4,62 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class ConfigManager {
-    private static final String CONFIG_FILE = new File("config.properties").getAbsolutePath();
 
-    private Properties properties = new Properties();
+    private final Properties properties = new Properties();
+    private final File configFile;
 
+    public ConfigManager() {
+        // Archivo config.properties en el directorio actual de ejecución
+        configFile = Paths.get(System.getProperty("user.dir"), "config.properties").toFile();
+        loadConfig();
+    }
+
+    /** ==================== CARGA & GUARDADO ==================== **/
     public void loadConfig() {
-        File configFile = new File(CONFIG_FILE);
         if (configFile.exists()) {
-            try (FileInputStream in = new FileInputStream(configFile)) {
-                properties.load(in);
+            try (FileInputStream fis = new FileInputStream(configFile)) {
+                properties.load(fis);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    public void saveConfig(double volume) {
-        properties.setProperty("volume", String.valueOf(volume));
-        try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
-            properties.store(out, "Configuración del reproductor OSU!");
+    private void saveProperties() {
+        try (FileOutputStream fos = new FileOutputStream(configFile)) {
+            properties.store(fos, "OSU! Music Player Config");
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /** ==================== AJUSTES DE VOLUMEN ==================== **/
+    public void saveConfig(double volume) {
+        properties.setProperty("volume", Double.toString(volume));
+        saveProperties();
     }
 
     public double getVolume() {
-        return Double.parseDouble(properties.getProperty("volume", "0.5"));
-    }
-
-    public void setLastFolder(String folderPath) {
-        properties.setProperty("lastFolder", folderPath);
-    }
-
-    public String getLastFolderPath() {
-        return properties.getProperty("lastFolder");
-    }
-
-    // ---- NUEVOS MÉTODOS PARA GUARDAR CANCIÓN Y POSICIÓN ----
-    public void saveCurrentSong(String songName, double position) {
-        properties.setProperty("currentSong", songName);
-        properties.setProperty("currentPosition", String.valueOf(position));
-        try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
-            properties.store(out, "Configuración del reproductor OSU!");
-        } catch (IOException e) {
-            e.printStackTrace();
+        try {
+            return Double.parseDouble(properties.getProperty("volume", "0.5"));
+        } catch (NumberFormatException e) {
+            return 0.5;
         }
+    }
+
+    /** ==================== CANCIÓN ACTUAL ==================== **/
+    public void saveCurrentSong(String songName, double positionSeconds) {
+        properties.setProperty("currentSong", songName);
+        properties.setProperty("currentPosition", Double.toString(positionSeconds));
+        saveProperties();
     }
 
     public String getCurrentSong() {
@@ -59,6 +67,39 @@ public class ConfigManager {
     }
 
     public double getCurrentPosition() {
-        return Double.parseDouble(properties.getProperty("currentPosition", "0.0"));
+        try {
+            return Double.parseDouble(properties.getProperty("currentPosition", "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** ==================== ÚLTIMA CARPETA ==================== **/
+    public void setLastFolder(String path) {
+        properties.setProperty("lastFolder", path);
+        saveProperties();
+    }
+
+    public String getLastFolder() {
+        return properties.getProperty("lastFolder", "");
+    }
+
+    /** ==================== FAVORITOS ==================== **/
+    public List<String> getFavorites() {
+        String favString = properties.getProperty("favorites", "").trim();
+        if (favString.isEmpty()) return new ArrayList<>();
+        return Arrays.stream(favString.split(";"))
+                     .map(String::trim)
+                     .filter(s -> !s.isEmpty())
+                     .collect(Collectors.toList());
+    }
+
+    public void saveFavorites(List<String> favorites) {
+        String favString = favorites.stream()
+                                    .map(String::trim)
+                                    .filter(s -> !s.isEmpty())
+                                    .collect(Collectors.joining(";"));
+        properties.setProperty("favorites", favString);
+        saveProperties();
     }
 }
