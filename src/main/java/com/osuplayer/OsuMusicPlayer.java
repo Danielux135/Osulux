@@ -46,11 +46,12 @@ public class OsuMusicPlayer extends Application {
     private Map<String, String> songPathMap = new HashMap<>();
     private Set<String> songsAdded = new HashSet<>();
 
-    private static final String CONFIG_FILE = "config.properties";
+    // CAMBIO: Ruta en AppData\Roaming en lugar del directorio actual
+    private static final String CONFIG_FILE = System.getenv("APPDATA") + File.separator + "Osulux" + File.separator + "config.properties";
+
     private String lastFolderPath = null;
     private boolean isSeeking = false;
 
-    // Para filtrar canciones sin perder la lista original
     private ObservableList<String> masterSongList = FXCollections.observableArrayList();
     private FilteredList<String> filteredSongList;
 
@@ -61,8 +62,6 @@ public class OsuMusicPlayer extends Application {
         loadConfig(); // cargar volumen y última carpeta
 
         Button chooseFolderButton = new Button("Seleccionar carpeta de canciones");
-
-        // Nuevo campo de texto para buscar
         TextField searchField = new TextField();
         searchField.setPromptText("Buscar canciones o artistas...");
 
@@ -93,10 +92,7 @@ public class OsuMusicPlayer extends Application {
         progressSlider.setMax(1);
         progressSlider.setValue(0);
 
-        progressSlider.setOnMousePressed(e -> {
-            isSeeking = true;
-        });
-
+        progressSlider.setOnMousePressed(e -> isSeeking = true);
         progressSlider.setOnMouseReleased(e -> {
             if (mediaPlayer != null) {
                 mediaPlayer.seek(Duration.seconds(progressSlider.getValue()));
@@ -104,8 +100,6 @@ public class OsuMusicPlayer extends Application {
             isSeeking = false;
         });
 
-        volumeSlider.setShowTickMarks(false);
-        volumeSlider.setShowTickLabels(false);
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (mediaPlayer != null) {
                 mediaPlayer.setVolume(newVal.doubleValue());
@@ -115,10 +109,8 @@ public class OsuMusicPlayer extends Application {
 
         HBox controlBox = new HBox(10, previousButton, playButton, pauseButton, stopButton, nextButton, volumeSlider);
         HBox progressBox = new HBox(10, progressSlider, timeLabel);
-
-        // Layout para la parte superior: botón elegir carpeta a la izquierda y buscador a la derecha
         HBox topBox = new HBox(10, chooseFolderButton, searchField);
-        HBox.setHgrow(searchField, Priority.ALWAYS); // que el buscador se expanda
+        HBox.setHgrow(searchField, Priority.ALWAYS);
 
         BorderPane root = new BorderPane();
         root.setTop(topBox);
@@ -129,17 +121,12 @@ public class OsuMusicPlayer extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Inicializar la lista filtrada con la lista maestra
         filteredSongList = new FilteredList<>(masterSongList, s -> true);
         songListView.setItems(filteredSongList);
 
-        // Listener para actualizar la lista filtrada según texto en el buscador
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
             String lowerFilter = newValue.toLowerCase();
-            filteredSongList.setPredicate(item -> {
-                if (item == null) return false;
-                return item.toLowerCase().contains(lowerFilter);
-            });
+            filteredSongList.setPredicate(item -> item != null && item.toLowerCase().contains(lowerFilter));
         });
 
         if (lastFolderPath != null) {
@@ -184,11 +171,8 @@ public class OsuMusicPlayer extends Application {
                         String title = null;
                         String artist = null;
                         for (String line : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
-                            if (line.startsWith("Title:")) {
-                                title = line.substring(6).trim();
-                            } else if (line.startsWith("Artist:")) {
-                                artist = line.substring(7).trim();
-                            }
+                            if (line.startsWith("Title:")) title = line.substring(6).trim();
+                            else if (line.startsWith("Artist:")) artist = line.substring(7).trim();
                             if (title != null && artist != null) break;
                         }
                         if (title != null && artist != null) {
@@ -216,20 +200,16 @@ public class OsuMusicPlayer extends Application {
         if (selectedSongName != null && songPathMap.containsKey(selectedSongName)) {
             String fullPath = songPathMap.get(selectedSongName);
 
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-            }
+            if (mediaPlayer != null) mediaPlayer.stop();
             Media media = new Media(new File(fullPath).toURI().toString());
             mediaPlayer = new MediaPlayer(media);
 
             mediaPlayer.setVolume(volumeSlider.getValue());
-
             mediaPlayer.setOnReady(() -> {
                 double totalSeconds = media.getDuration().toSeconds();
                 progressSlider.setMax(totalSeconds);
                 updateTimeLabel(0, totalSeconds);
             });
-
             mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
                 if (!isSeeking) {
                     double currentSeconds = newTime.toSeconds();
@@ -240,9 +220,7 @@ public class OsuMusicPlayer extends Application {
                     });
                 }
             });
-
             mediaPlayer.setOnEndOfMedia(() -> Platform.runLater(this::playNextSong));
-
             mediaPlayer.play();
         }
     }
@@ -250,8 +228,7 @@ public class OsuMusicPlayer extends Application {
     private void playPreviousSong() {
         int currentIndex = songListView.getSelectionModel().getSelectedIndex();
         if (currentIndex > 0) {
-            int previousIndex = currentIndex - 1;
-            songListView.getSelectionModel().select(previousIndex);
+            songListView.getSelectionModel().select(currentIndex - 1);
             playSelectedSong();
         }
     }
@@ -259,8 +236,7 @@ public class OsuMusicPlayer extends Application {
     private void playNextSong() {
         int currentIndex = songListView.getSelectionModel().getSelectedIndex();
         if (currentIndex < songListView.getItems().size() - 1) {
-            int nextIndex = currentIndex + 1;
-            songListView.getSelectionModel().select(nextIndex);
+            songListView.getSelectionModel().select(currentIndex + 1);
             playSelectedSong();
         }
     }
@@ -277,6 +253,7 @@ public class OsuMusicPlayer extends Application {
         return String.format("%02d:%02d", minutes, secs);
     }
 
+    // CAMBIO: ahora lee desde AppData\Roaming\Osulux
     private void loadConfig() {
         File configFile = new File(CONFIG_FILE);
         if (configFile.exists()) {
@@ -285,12 +262,8 @@ public class OsuMusicPlayer extends Application {
                 props.load(input);
                 String volumeStr = props.getProperty("volume");
                 String folderStr = props.getProperty("lastFolder");
-                if (volumeStr != null) {
-                    volumeSlider.setValue(Double.parseDouble(volumeStr));
-                }
-                if (folderStr != null && !folderStr.isBlank()) {
-                    lastFolderPath = folderStr;
-                }
+                if (volumeStr != null) volumeSlider.setValue(Double.parseDouble(volumeStr));
+                if (folderStr != null && !folderStr.isBlank()) lastFolderPath = folderStr;
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -305,14 +278,18 @@ public class OsuMusicPlayer extends Application {
         saveConfig(folder, volumeSlider.getValue());
     }
 
+    // CAMBIO: crea carpeta AppData\Roaming\Osulux si no existe
     private void saveConfig(String folder, double volume) {
-        Properties props = new Properties();
-        props.setProperty("volume", String.valueOf(volume));
-        if (folder != null) {
-            props.setProperty("lastFolder", folder);
-        }
-        try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
-            props.store(output, "OSU Music Player Config");
+        try {
+            File configFile = new File(CONFIG_FILE);
+            File parentDir = configFile.getParentFile();
+            if (!parentDir.exists()) parentDir.mkdirs(); // CAMBIO
+            Properties props = new Properties();
+            props.setProperty("volume", String.valueOf(volume));
+            if (folder != null) props.setProperty("lastFolder", folder);
+            try (OutputStream output = new FileOutputStream(configFile)) {
+                props.store(output, "OSU Music Player Config");
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
