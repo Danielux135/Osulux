@@ -1,78 +1,64 @@
 package com.osuplayer;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
 public class ConfigManager {
-
-    private static final String CONFIG_FILE = "config.properties";
+    private static final String CONFIG_FILE = new File("config.properties").getAbsolutePath();
 
     private Properties properties = new Properties();
 
     public void loadConfig() {
-        try (FileInputStream in = new FileInputStream(CONFIG_FILE)) {
-            properties.load(in);
-        } catch (IOException e) {
-            // archivo no existe o no se pudo leer, usar valores por defecto
+        File configFile = new File(CONFIG_FILE);
+        if (configFile.exists()) {
+            try (FileInputStream in = new FileInputStream(configFile)) {
+                properties.load(in);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     public void saveConfig(double volume) {
-        properties.setProperty("volume", Double.toString(volume));
-        savePropertiesToFile();
-    }
-
-    public double getVolume() {
-        String vol = properties.getProperty("volume");
-        if (vol != null) {
-            try {
-                return Double.parseDouble(vol);
-            } catch (NumberFormatException e) {
-                return 0.5;
-            }
-        }
-        return 0.5;
-    }
-
-    public void setLastFolder(String path) {
-        properties.setProperty("lastFolder", path);
-        savePropertiesToFile();
-    }
-
-    public String getLastFolder() {
-        return properties.getProperty("lastFolder");
-    }
-
-    // Métodos para canción actual y posición
-    public void saveCurrentSong(String songName, double position) {
-        properties.setProperty("currentSong", songName);
-        properties.setProperty("currentPosition", Double.toString(position));
-        savePropertiesToFile();
-    }
-
-    public String getCurrentSong() {
-        return properties.getProperty("currentSong");
-    }
-
-    public double getCurrentPosition() {
-        String pos = properties.getProperty("currentPosition");
-        if (pos != null) {
-            try {
-                return Double.parseDouble(pos);
-            } catch (NumberFormatException e) {
-                return 0;
-            }
-        }
-        return 0;
-    }
-
-    private void savePropertiesToFile() {
+        properties.setProperty("volume", String.valueOf(volume));
         try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
-            properties.store(out, "OSU! Music Player config");
+            properties.store(out, "Configuración del reproductor OSU!");
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public double getVolume() {
+        return Double.parseDouble(properties.getProperty("volume", "0.5"));
+    }
+
+    public void setLastFolder(String folderPath) {
+        properties.setProperty("lastFolder", folderPath);
+    }
+
+    public String getLastFolderPath() {
+        return properties.getProperty("lastFolder");
+    }
+
+    // ---- NUEVOS MÉTODOS PARA GUARDAR CANCIÓN Y POSICIÓN ----
+    public void saveCurrentSong(String songName, double position) {
+        properties.setProperty("currentSong", songName);
+        properties.setProperty("currentPosition", String.valueOf(position));
+        try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
+            properties.store(out, "Configuración del reproductor OSU!");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getCurrentSong() {
+        return properties.getProperty("currentSong", "");
+    }
+
+    public double getCurrentPosition() {
+        return Double.parseDouble(properties.getProperty("currentPosition", "0.0"));
     }
 }

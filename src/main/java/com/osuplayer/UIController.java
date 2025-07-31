@@ -1,8 +1,6 @@
 package com.osuplayer;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -49,15 +47,10 @@ public class UIController {
     private Label currentSongLabel = new Label("Sin canción");
     private ImageView coverImageView = new ImageView();
 
-    private String currentSong = null;
-    private double savedPosition = 0;
-
-    private final List<String> playHistory = new ArrayList<>();
-    private int historyIndex = -1;
-
-    // Tamaño fijo para botones
-    private static final double BUTTON_WIDTH = 40;
-    private static final double BUTTON_HEIGHT = 30;
+    // Estado de reproducción
+    private boolean isPlaying = false;
+    private String lastSong = "";
+    private double lastPosition = 0.0;
 
     public UIController() {
         musicManager = new MusicManager();
@@ -74,11 +67,23 @@ public class UIController {
         TextField searchField = new TextField();
         searchField.setPromptText("Buscar canciones o artistas...");
 
-        Button previousButton = createFixedSizeButton("⏮");
-        Button playPauseButton = createFixedSizeButton("▶");
-        Button stopButton = createFixedSizeButton("⏹");
-        Button nextButton = createFixedSizeButton("⏭");
-        Button shuffleButton = createFixedSizeButton("🔀");
+        Button previousButton = new Button("⏮");
+        Button playPauseButton = new Button("▶");
+        Button stopButton = new Button("⏹");
+        Button nextButton = new Button("⏭");
+
+        Button shuffleButton = new Button("🔀");
+        shuffleButton.setPrefSize(40, 30);
+        playPauseButton.setPrefSize(40, 30);
+        previousButton.setPrefSize(40, 30);
+        stopButton.setPrefSize(40, 30);
+        nextButton.setPrefSize(40, 30);
+
+        shuffleButton.setOnAction(e -> toggleShuffle());
+        playPauseButton.setOnAction(e -> togglePlayPause(playPauseButton));
+        stopButton.setOnAction(e -> stopSong());
+        previousButton.setOnAction(e -> playPreviousSong());
+        nextButton.setOnAction(e -> playNextSong());
 
         chooseFolderButton.setOnAction(e -> {
             DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -89,59 +94,21 @@ public class UIController {
                 configManager.setLastFolder(selectedDirectory.getAbsolutePath());
                 configManager.saveConfig(volumeSlider.getValue());
                 loadSongs(selectedDirectory);
-                clearHistory();
             }
         });
-
-        previousButton.setOnAction(e -> playPreviousSong());
-
-        playPauseButton.setOnAction(e -> {
-            if (mediaPlayer == null) {
-                playSelectedSong();
-                playPauseButton.setText("⏸");
-            } else {
-                MediaPlayer.Status status = mediaPlayer.getStatus();
-                if (status == MediaPlayer.Status.PLAYING) {
-                    mediaPlayer.pause();
-                    playPauseButton.setText("▶");
-                } else {
-                    mediaPlayer.play();
-                    playPauseButton.setText("⏸");
-                }
-            }
-        });
-
-        stopButton.setOnAction(e -> {
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-                savedPosition = 0;
-                if (currentSong != null) {
-                    configManager.saveCurrentSong(currentSong, savedPosition);
-                }
-                playPauseButton.setText("▶");
-            }
-        });
-
-        nextButton.setOnAction(e -> playNextSong());
-        shuffleButton.setOnAction(e -> toggleShuffle());
 
         songListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 playSelectedSong();
-                playPauseButton.setText("⏸");
             }
         });
 
         progressSlider.setMin(0);
         progressSlider.setMax(1);
         progressSlider.setValue(0);
-
         progressSlider.setOnMousePressed(e -> isSeeking = true);
         progressSlider.setOnMouseReleased(e -> {
-            if (mediaPlayer != null) {
-                mediaPlayer.seek(Duration.seconds(progressSlider.getValue()));
-                savedPosition = progressSlider.getValue();
-            }
+            if (mediaPlayer != null) mediaPlayer.seek(Duration.seconds(progressSlider.getValue()));
             isSeeking = false;
         });
 
@@ -184,17 +151,6 @@ public class UIController {
 
         Scene scene = new Scene(root, 800, 500);
         primaryStage.setScene(scene);
-
-        primaryStage.setOnCloseRequest(event -> {
-            if (currentSong != null) {
-                double pos = 0;
-                if (mediaPlayer != null) {
-                    pos = mediaPlayer.getCurrentTime().toSeconds();
-                }
-                configManager.saveCurrentSong(currentSong, pos);
-            }
-        });
-
         primaryStage.show();
 
         filteredSongList = new FilteredList<>(masterSongList, s -> true);
@@ -207,49 +163,47 @@ public class UIController {
 
         if (musicManager.getLastFolderPath() != null) {
             File folder = new File(musicManager.getLastFolderPath());
-            if (folder.exists() && folder.isDirectory()) {
-                loadSongs(folder);
-
-                String savedSong = configManager.getCurrentSong();
-                savedPosition = configManager.getCurrentPosition();
-
-                if (savedSong != null && !savedSong.isEmpty() && masterSongList.contains(savedSong)) {
-                    currentSong = savedSong;
-                    songListView.getSelectionModel().select(currentSong);
-                    prepareSong(currentSong);
-                }
-            }
+            if (folder.exists() && folder.isDirectory()) loadSongs(folder);
         }
-    }
 
-    private Button createFixedSizeButton(String text) {
-        Button btn = new Button(text);
-        btn.setPrefWidth(BUTTON_WIDTH);
-        btn.setPrefHeight(BUTTON_HEIGHT);
-        btn.setMinWidth(BUTTON_WIDTH);
-        btn.setMinHeight(BUTTON_HEIGHT);
-        btn.setMaxWidth(BUTTON_WIDTH);
-        btn.setMaxHeight(BUTTON_HEIGHT);
-        btn.setFocusTraversable(false);
-        btn.setAlignment(Pos.CENTER);
-        return btn;
-    }
-
-    private void clearHistory() {
-        playHistory.clear();
-        historyIndex = -1;
-    }
-
-    private void addToHistory(String song) {
-        while (playHistory.size() > historyIndex + 1) {
-            playHistory.remove(playHistory.size() - 1);
+        // Restaurar última canción y posición
+        lastSong = configManager.getCurrentSong();
+        lastPosition = configManager.getCurrentPosition();
+        if (!lastSong.isEmpty()) {
+            songListView.getSelectionModel().select(lastSong);
+            playSelectedSong();
+            if (mediaPlayer != null) mediaPlayer.seek(Duration.seconds(lastPosition));
         }
-        playHistory.add(song);
-        historyIndex = playHistory.size() - 1;
     }
 
     private void toggleShuffle() {
         shuffleEnabled = !shuffleEnabled;
+    }
+
+    private void togglePlayPause(Button button) {
+        if (mediaPlayer == null) {
+            playSelectedSong();
+            button.setText("⏸");
+            isPlaying = true;
+        } else {
+            if (isPlaying) {
+                mediaPlayer.pause();
+                button.setText("▶");
+                isPlaying = false;
+            } else {
+                mediaPlayer.play();
+                button.setText("⏸");
+                isPlaying = true;
+            }
+        }
+    }
+
+    private void stopSong() {
+        if (mediaPlayer != null) {
+            configManager.saveCurrentSong(songListView.getSelectionModel().getSelectedItem(), mediaPlayer.getCurrentTime().toSeconds());
+            mediaPlayer.stop();
+            isPlaying = false;
+        }
     }
 
     private void loadSongs(File folder) {
@@ -262,8 +216,11 @@ public class UIController {
         }
     }
 
-    private void prepareSong(String songName) {
-        String path = musicManager.getSongPath(songName);
+    private void playSelectedSong() {
+        String selected = songListView.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        String path = musicManager.getSongPath(selected);
         if (path == null) return;
 
         if (mediaPlayer != null) mediaPlayer.stop();
@@ -271,14 +228,13 @@ public class UIController {
         mediaPlayer = new MediaPlayer(media);
         mediaPlayer.setVolume(volumeSlider.getValue());
 
-        currentSongLabel.setText(songName);
+        currentSongLabel.setText(selected);
         updateCoverImage(path);
 
         mediaPlayer.setOnReady(() -> {
             double totalSeconds = media.getDuration().toSeconds();
             progressSlider.setMax(totalSeconds);
-            updateTimeLabel(mediaPlayer.getCurrentTime().toSeconds(), totalSeconds);
-            mediaPlayer.seek(Duration.seconds(savedPosition));
+            updateTimeLabel(0, totalSeconds);
         });
 
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
@@ -293,18 +249,8 @@ public class UIController {
         });
 
         mediaPlayer.setOnEndOfMedia(() -> Platform.runLater(this::playNextSong));
-    }
-
-    private void playSelectedSong() {
-        String selected = songListView.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-
-        currentSong = selected;
-        savedPosition = 0;
-        prepareSong(currentSong);
         mediaPlayer.play();
-
-        addToHistory(currentSong);
+        isPlaying = true;
     }
 
     private void updateCoverImage(String songPath) {
@@ -322,44 +268,26 @@ public class UIController {
     }
 
     private void playPreviousSong() {
-        if (historyIndex > 0) {
-            historyIndex--;
-            String previousSong = playHistory.get(historyIndex);
-            currentSong = previousSong;
-            savedPosition = 0;
-            songListView.getSelectionModel().select(previousSong);
-            prepareSong(previousSong);
-            mediaPlayer.play();
+        int idx = songListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            songListView.getSelectionModel().select(idx - 1);
+            playSelectedSong();
         }
     }
 
     private void playNextSong() {
         if (shuffleEnabled) {
             int randomIndex = random.nextInt(songListView.getItems().size());
-            String randomSong = songListView.getItems().get(randomIndex);
-            currentSong = randomSong;
-            savedPosition = 0;
-            songListView.getSelectionModel().select(randomSong);
-            prepareSong(randomSong);
-            mediaPlayer.play();
-
-            addToHistory(randomSong);
+            songListView.getSelectionModel().select(randomIndex);
         } else {
             int idx = songListView.getSelectionModel().getSelectedIndex();
             if (idx < songListView.getItems().size() - 1) {
-                idx++;
+                songListView.getSelectionModel().select(idx + 1);
             } else {
-                idx = 0;
+                songListView.getSelectionModel().select(0);
             }
-            String nextSong = songListView.getItems().get(idx);
-            currentSong = nextSong;
-            savedPosition = 0;
-            songListView.getSelectionModel().select(nextSong);
-            prepareSong(nextSong);
-            mediaPlayer.play();
-
-            addToHistory(nextSong);
         }
+        playSelectedSong();
     }
 
     private void updateTimeLabel(double currentSeconds, double totalSeconds) {
