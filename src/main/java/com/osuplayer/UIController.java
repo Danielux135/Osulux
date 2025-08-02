@@ -71,7 +71,6 @@ public class UIController {
         this.musicManager = new MusicManager();
         this.configManager = new ConfigManager();
 
-        // Carga favoritos desde config (puede ser List o Set)
         favoritos.addAll(new HashSet<>(configManager.getFavorites()));
 
         mediaPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
@@ -164,7 +163,6 @@ public class UIController {
             }
         });
 
-        // Context menu favoritos
         songListView.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -248,17 +246,16 @@ public class UIController {
 
         searchField.textProperty().addListener((obs, oldValue, newValue) -> updateFilters(newValue));
 
-        // Cargar última carpeta
         String lastFolder = configManager.getLastFolder();
         if (lastFolder != null && !lastFolder.isEmpty()) {
             File folder = new File(lastFolder);
             if (folder.exists() && folder.isDirectory()) loadSongs(folder);
         }
 
-        // Cargar última canción
         String lastSong = configManager.getCurrentSong();
         if (lastSong != null && !lastSong.isEmpty() && musicManager.getSongPath(lastSong) != null) {
             songListView.getSelectionModel().select(lastSong);
+            songListView.scrollTo(lastSong);  // Añadido scroll aquí también
             currentSongLabel.setText(lastSong);
             updateFavoriteButton(lastSong);
             updateCoverImage(musicManager.getSongPath(lastSong));
@@ -375,6 +372,7 @@ public class UIController {
             playHistory.pop();
             String previousSong = playHistory.peek();
             songListView.getSelectionModel().select(previousSong);
+            songListView.scrollTo(previousSong);  // Añadido scroll aquí también
             playSelectedSongFromHistory(previousSong, 0);
         }
     }
@@ -385,6 +383,7 @@ public class UIController {
             String randomSong = songListView.getItems().get(randomIndex);
             playHistory.push(randomSong);
             songListView.getSelectionModel().select(randomSong);
+            songListView.scrollTo(randomSong);  // Añadido scroll aquí también
         } else {
             int idx = songListView.getSelectionModel().getSelectedIndex();
             String nextSong = (idx < songListView.getItems().size() - 1)
@@ -392,6 +391,7 @@ public class UIController {
                     : songListView.getItems().get(0);
             playHistory.push(nextSong);
             songListView.getSelectionModel().select(nextSong);
+            songListView.scrollTo(nextSong);  // Añadido scroll aquí también
         }
         playSelectedSongFromHistory(songListView.getSelectionModel().getSelectedItem(), 0);
     }
