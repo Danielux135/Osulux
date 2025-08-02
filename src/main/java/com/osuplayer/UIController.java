@@ -71,6 +71,7 @@ public class UIController {
         this.musicManager = new MusicManager();
         this.configManager = new ConfigManager();
 
+        // Carga favoritos desde config (puede ser List o Set)
         favoritos.addAll(new HashSet<>(configManager.getFavorites()));
 
         mediaPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
@@ -101,7 +102,12 @@ public class UIController {
 
     public void start(Stage primaryStage) {
         primaryStage.setTitle("OSU! Music Player");
+
+        // Establecer el valor del slider según la configuración guardada
         volumeSlider.setValue(configManager.getVolume() * 100);
+
+        // Sincronizar el volumen real del mediaPlayer con el slider al inicio
+        mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         Button chooseFolderButton = new Button("Seleccionar carpeta de canciones");
         TextField searchField = new TextField();
@@ -163,6 +169,7 @@ public class UIController {
             }
         });
 
+        // Context menu favoritos
         songListView.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -239,16 +246,6 @@ public class UIController {
 
         Scene scene = new Scene(root, 850, 500);
         primaryStage.setScene(scene);
-
-        primaryStage.setOnCloseRequest(event -> {
-            if (mediaPlayer != null) {
-                mediaPlayer.controls().stop();
-                mediaPlayer.release();
-            }
-            Platform.exit();
-            System.exit(0);
-        });
-
         primaryStage.show();
 
         filteredSongList = new FilteredList<>(masterSongList, s -> true);
@@ -256,12 +253,14 @@ public class UIController {
 
         searchField.textProperty().addListener((obs, oldValue, newValue) -> updateFilters(newValue));
 
+        // Cargar última carpeta
         String lastFolder = configManager.getLastFolder();
         if (lastFolder != null && !lastFolder.isEmpty()) {
             File folder = new File(lastFolder);
             if (folder.exists() && folder.isDirectory()) loadSongs(folder);
         }
 
+        // Cargar última canción
         String lastSong = configManager.getCurrentSong();
         if (lastSong != null && !lastSong.isEmpty() && musicManager.getSongPath(lastSong) != null) {
             songListView.getSelectionModel().select(lastSong);
