@@ -12,42 +12,71 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
         <javafx.version>21.0.8</javafx.version>
+        <vlcj.version>4.7.1</vlcj.version>
+        <vlcj.javafx.version>1.2.0</vlcj.javafx.version>
+        <jna.version>5.13.0</jna.version>
     </properties>
 
     <dependencies>
-        <!-- JavaFX Controls -->
+        <!-- JavaFX dependencies -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-
-        <!-- JavaFX Media -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-media</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- VLCJ core -->
+        <dependency>
+            <groupId>uk.co.caprica</groupId>
+            <artifactId>vlcj</artifactId>
+            <version>${vlcj.version}</version>
+        </dependency>
+
+        <!-- VLCJ JavaFX -->
+        <dependency>
+            <groupId>uk.co.caprica</groupId>
+            <artifactId>vlcj-javafx</artifactId>
+            <version>${vlcj.javafx.version}</version>
+        </dependency>
+
+        <!-- JNA -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Jar con clase Main -->
+            <!-- Plugin para compilar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.2</version>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.osuplayer.MainApp</mainClass>
-                        </manifest>
-                    </archive>
+                    <release>21</release>
                 </configuration>
             </plugin>
 
-            <!-- Empaquetar dependencias en un solo jar -->
+            <!-- Plugin para crear jar con dependencias y manifest -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -73,19 +102,6 @@
                 </executions>
             </plugin>
 
-            <!-- Plugin JavaFX para desarrollo -->
-            <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.8</version>
-                <configuration>
-                    <mainClass>com.osuplayer.MainApp</mainClass>
-                    <options>
-                        <option>--enable-native-access=javafx.graphics,javafx.media</option>
-                        <option>--enable-preview</option>
-                    </options>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 </project>

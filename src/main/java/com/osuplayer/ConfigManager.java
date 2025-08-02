@@ -28,6 +28,7 @@ public class ConfigManager {
             try (FileInputStream fis = new FileInputStream(configFile)) {
                 properties.load(fis);
             } catch (IOException e) {
+                System.err.println("Error cargando config.properties:");
                 e.printStackTrace();
             }
         }
@@ -37,19 +38,24 @@ public class ConfigManager {
         try (FileOutputStream fos = new FileOutputStream(configFile)) {
             properties.store(fos, "OSU! Music Player Config");
         } catch (IOException e) {
+            System.err.println("Error guardando config.properties:");
             e.printStackTrace();
         }
     }
 
     /** ==================== AJUSTES DE VOLUMEN ==================== **/
     public void saveConfig(double volume) {
+        if (volume < 0) volume = 0;
+        if (volume > 1) volume = 1;
         properties.setProperty("volume", Double.toString(volume));
         saveProperties();
     }
 
     public double getVolume() {
         try {
-            return Double.parseDouble(properties.getProperty("volume", "0.5"));
+            double v = Double.parseDouble(properties.getProperty("volume", "0.5"));
+            if (v < 0 || v > 1) return 0.5;
+            return v;
         } catch (NumberFormatException e) {
             return 0.5;
         }
@@ -57,9 +63,11 @@ public class ConfigManager {
 
     /** ==================== CANCIÓN ACTUAL ==================== **/
     public void saveCurrentSong(String songName, double positionSeconds) {
-        properties.setProperty("currentSong", songName);
-        properties.setProperty("currentPosition", Double.toString(positionSeconds));
-        saveProperties();
+        if (songName != null && !songName.trim().isEmpty()) {
+            properties.setProperty("currentSong", songName.trim());
+            properties.setProperty("currentPosition", Double.toString(Math.max(0, positionSeconds)));
+            saveProperties();
+        }
     }
 
     public String getCurrentSong() {
@@ -68,7 +76,8 @@ public class ConfigManager {
 
     public double getCurrentPosition() {
         try {
-            return Double.parseDouble(properties.getProperty("currentPosition", "0"));
+            double pos = Double.parseDouble(properties.getProperty("currentPosition", "0"));
+            return pos < 0 ? 0 : pos;
         } catch (NumberFormatException e) {
             return 0;
         }
@@ -76,8 +85,10 @@ public class ConfigManager {
 
     /** ==================== ÚLTIMA CARPETA ==================== **/
     public void setLastFolder(String path) {
-        properties.setProperty("lastFolder", path);
-        saveProperties();
+        if (path != null && !path.trim().isEmpty()) {
+            properties.setProperty("lastFolder", path.trim());
+            saveProperties();
+        }
     }
 
     public String getLastFolder() {
@@ -95,11 +106,18 @@ public class ConfigManager {
     }
 
     public void saveFavorites(List<String> favorites) {
+        if (favorites == null) return;
         String favString = favorites.stream()
                                     .map(String::trim)
                                     .filter(s -> !s.isEmpty())
                                     .collect(Collectors.joining(";"));
         properties.setProperty("favorites", favString);
+        saveProperties();
+    }
+
+    /** ==================== RESET CONFIGURACIÓN ==================== **/
+    public void resetConfig() {
+        properties.clear();
         saveProperties();
     }
 }
