@@ -1,6 +1,9 @@
 package com.osuplayer;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -103,10 +106,7 @@ public class UIController {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("OSU! Music Player");
 
-        // Establecer el valor del slider según la configuración guardada
         volumeSlider.setValue(configManager.getVolume() * 100);
-
-        // Sincronizar el volumen real del mediaPlayer con el slider al inicio
         mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         Button chooseFolderButton = new Button("Seleccionar carpeta de canciones");
@@ -169,7 +169,7 @@ public class UIController {
             }
         });
 
-        // Context menu favoritos
+        // Context menu favoritos y exportar
         songListView.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -190,7 +190,11 @@ public class UIController {
                         updateFilters(null);
                         songListView.refresh();
                     });
-                    setContextMenu(new ContextMenu(toggleFavoriteItem));
+
+                    MenuItem exportItem = new MenuItem("Exportar canción");
+                    exportItem.setOnAction(e -> exportarCancion(item));
+
+                    setContextMenu(new ContextMenu(toggleFavoriteItem, exportItem));
                 }
             }
         });
@@ -412,5 +416,67 @@ public class UIController {
         int minutes = (int) seconds / 60;
         int secs = (int) seconds % 60;
         return String.format("%02d:%02d", minutes, secs);
+    }
+
+    private void exportarCancion(String nombreCancion) {
+        String rutaOriginal = musicManager.getSongPath(nombreCancion);
+        if (rutaOriginal == null) {
+            mostrarAlerta("Error", "No se pudo obtener la ruta del archivo para:\n" + nombreCancion);
+            return;
+        }
+
+        File archivoOriginal = new File(rutaOriginal);
+        if (!archivoOriginal.exists()) {
+            mostrarAlerta("Error", "Archivo no encontrado:\n" + rutaOriginal);
+            return;
+        }
+
+        File carpetaExportado = new File("Exportado");
+        if (!carpetaExportado.exists()) {
+            carpetaExportado.mkdirs();
+        }
+
+        String extension = "";
+        int i = archivoOriginal.getName().lastIndexOf('.');
+        if (i > 0) {
+            extension = archivoOriginal.getName().substring(i);
+        }
+
+        String nuevoNombre = sanitizarNombreArchivo(nombreCancion + extension);
+        File archivoDestino = new File(carpetaExportado, nuevoNombre);
+
+        try {
+            Files.copy(archivoOriginal.toPath(), archivoDestino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            mostrarAlerta("Éxito", "Archivo exportado a:\n" + archivoDestino.getAbsolutePath());
+        } catch (IOException e) {
+            mostrarAlerta("Error", "Error al exportar archivo:\n" + e.getMessage());
+        }
+    }
+
+    private String sanitizarNombreArchivo(String nombre) {
+        return nombre.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
+    private void mostrarAlerta(String titulo, String mensaje) {
+        Platform.runLater(() -> {
+            Stage dialog = new Stage();
+            dialog.setTitle(titulo);
+
+            Label label = new Label(mensaje);
+            label.setWrapText(true);
+            label.setMinWidth(300);
+
+            Button ok = new Button("OK");
+            ok.setOnAction(e -> dialog.close());
+
+            VBox box = new VBox(10, label, ok);
+            box.setAlignment(Pos.CENTER);
+            box.setMinWidth(350);
+            box.setMinHeight(150);
+
+            Scene scene = new Scene(box);
+            dialog.setScene(scene);
+            dialog.show();
+        });
     }
 }
