@@ -7,14 +7,28 @@ import uk.co.caprica.vlcj.player.base.MediaPlayer;
 
 public class MainApp extends Application {
 
+    private MediaPlayerFactory factory;
+    private MediaPlayer mediaPlayer;
+
     @Override
     public void start(Stage primaryStage) {
         // Crear MediaPlayer una sola vez y pasarlo al UIController
-        MediaPlayerFactory factory = new MediaPlayerFactory();
-        MediaPlayer mediaPlayer = factory.mediaPlayers().newMediaPlayer();
+        factory = new MediaPlayerFactory();
+        mediaPlayer = factory.mediaPlayers().newMediaPlayer();
 
         UIController ui = new UIController(mediaPlayer);
         ui.start(primaryStage);
+
+        // Cerrar mediaPlayer y factory al cerrar la ventana
+        primaryStage.setOnCloseRequest(event -> {
+            if (mediaPlayer != null) {
+                mediaPlayer.controls().stop();
+                mediaPlayer.release();
+            }
+            if (factory != null) {
+                factory.release();
+            }
+        });
     }
 
     public static void main(String[] args) {

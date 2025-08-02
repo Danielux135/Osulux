@@ -1,99 +1,64 @@
 package com.osuplayer;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.MalformedInputException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MusicManager {
 
-    private Map<String, String> songPathMap = new HashMap<>();
-    private Set<String> songsAdded = new HashSet<>();
+    private final Map<String, String> songs = new LinkedHashMap<>();
     private String lastFolderPath;
 
-    /**
-     * Carga todas las canciones leyendo archivos .osu recursivamente
-     * desde la carpeta indicada. Para cada canción, guarda
-     * "Título — Artista" como clave y la ruta del archivo de audio (mp3/ogg) como valor.
-     */
+    // Nueva estructura para mapear el nombre de la canción a la carpeta beatmap
+    private final Map<String, String> songBaseFolders = new HashMap<>();
+
     public Map<String, String> loadSongsFromFolder(File folder) {
-        songPathMap.clear();
-        songsAdded.clear();
-        if (folder != null && folder.exists() && folder.isDirectory()) {
-            findMusicFiles(folder);
-            lastFolderPath = folder.getAbsolutePath();
-        }
-        return songPathMap;
-    }
+        songs.clear();
+        songBaseFolders.clear();
+        if (folder == null || !folder.exists() || !folder.isDirectory()) return songs;
 
-    /**
-     * Busca recursivamente archivos .osu para extraer título y artista,
-     * luego asocia con el archivo de audio mp3/ogg en la misma carpeta.
-     */
-    private void findMusicFiles(File folder) {
-        File[] files = folder.listFiles();
-        if (files == null) return;
+        File[] beatmapFolders = folder.listFiles(File::isDirectory);
+        if (beatmapFolders == null) return songs;
 
-        for (File file : files) {
-            if (file.isDirectory()) {
-                findMusicFiles(file);
-            } else if (file.getName().toLowerCase().endsWith(".osu")) {
-                try {
-                    String title = null;
-                    String artist = null;
+        for (File beatmap : beatmapFolders) {
+            File[] osuFiles = beatmap.listFiles((dir, name) -> name.toLowerCase().endsWith(".osu"));
+            if (osuFiles == null || osuFiles.length == 0) continue;
 
-                    // Leer archivo .osu con UTF-8
-                    try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            if (line.startsWith("Title:")) title = line.substring(6).trim();
-                            else if (line.startsWith("Artist:")) artist = line.substring(7).trim();
-                            if (title != null && artist != null) break;
+            // Intentar extraer datos del primer archivo .osu válido
+            for (File osuFile : osuFiles) {
+                SongMetadata meta = parseOsuFile(osuFile);
+                if (meta != null && meta.audioFilename != null) {
+                    File audioFile = new File(beatmap, meta.audioFilename);
+                    if (audioFile.exists()) {
+                        String displayName = meta.artist + " - " + meta.title;
+                        if (!songs.containsKey(displayName)) { // Evitar duplicados
+                            songs.put(displayName, audioFile.getAbsolutePath());
+                            // Guardar carpeta base para la canción
+                            songBaseFolders.put(displayName, beatmap.getAbsolutePath());
                         }
-                    } catch (MalformedInputException e) {
-                        // Si falla UTF-8, intentar con ISO-8859-1
-                        try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.ISO_8859_1)) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                if (line.startsWith("Title:")) title = line.substring(6).trim();
-                                else if (line.startsWith("Artist:")) artist = line.substring(7).trim();
-                                if (title != null && artist != null) break;
-                            }
-                        }
+                        break; // tomar solo la primera canción válida
                     }
-
-                    if (title != null && artist != null) {
-                        String displayName = title + " — " + artist;
-                        if (!songsAdded.contains(displayName)) {
-                            File parent = file.getParentFile();
-                            File[] audioFiles = parent.listFiles((dir, name) ->
-                                name.toLowerCase().endsWith(".mp3") ||
-                                name.toLowerCase().endsWith(".ogg")
-                            );
-                            if (audioFiles != null && audioFiles.length > 0) {
-                                songPathMap.put(displayName, audioFiles[0].getAbsolutePath());
-                                songsAdded.add(displayName);
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
             }
         }
+        return songs;
     }
 
-    /**
-     * Devuelve la ruta absoluta del archivo de audio de la canción.
-     */
     public String getSongPath(String songName) {
-        return songPathMap.get(songName);
+        return songs.get(songName);
+    }
+
+    public void exportSongPath(String songName) {
+        String path = getSongPath(songName);
+        if (path != null) {
+            try (FileWriter writer = new FileWriter("exported_song_path.txt", false)) {
+                writer.write(path);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void setLastFolderPath(String path) {
@@ -102,5 +67,59 @@ public class MusicManager {
 
     public String getLastFolderPath() {
         return lastFolderPath;
+    }
+
+    /**
+     * Devuelve la carpeta base (beatmap folder) donde está la canción.
+     * Retorna null si no se encuentra.
+     */
+    public String getSongBaseFolder(String songName) {
+        return songBaseFolders.get(songName);
+    }
+
+    // ---------- MÉTODO PRIVADO PARA PARSEAR ARCHIVO OSU ----------
+    private SongMetadata parseOsuFile(File osuFile) {
+        String title = null;
+        String artist = null;
+        String audioFilename = null;
+
+        Pattern titlePattern = Pattern.compile("^Title:(.*)$", Pattern.CASE_INSENSITIVE);
+        Pattern artistPattern = Pattern.compile("^Artist:(.*)$", Pattern.CASE_INSENSITIVE);
+        Pattern audioPattern = Pattern.compile("^AudioFilename:(.*)$", Pattern.CASE_INSENSITIVE);
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Matcher m1 = titlePattern.matcher(line);
+                Matcher m2 = artistPattern.matcher(line);
+                Matcher m3 = audioPattern.matcher(line);
+
+                if (m1.find()) title = m1.group(1).trim();
+                if (m2.find()) artist = m2.group(1).trim();
+                if (m3.find()) audioFilename = m3.group(1).trim();
+
+                if (title != null && artist != null && audioFilename != null) break;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (title != null && artist != null && audioFilename != null) {
+            return new SongMetadata(title, artist, audioFilename);
+        }
+        return null;
+    }
+
+    // Clase interna para guardar la metadata
+    private static class SongMetadata {
+        String title;
+        String artist;
+        String audioFilename;
+
+        SongMetadata(String title, String artist, String audioFilename) {
+            this.title = title;
+            this.artist = artist;
+            this.audioFilename = audioFilename;
+        }
     }
 }
