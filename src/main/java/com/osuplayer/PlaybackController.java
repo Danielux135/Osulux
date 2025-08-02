@@ -1,74 +1,90 @@
 package com.osuplayer;
 
-import java.util.List;
-import java.util.Random;
-
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
+import uk.co.caprica.vlcj.player.base.State;
 
 public class PlaybackController {
 
     private final MediaPlayer mediaPlayer;
-    private String currentSongPath;
-    private boolean shuffle = false;
-    private final Random random = new Random();
+    private String currentMediaPath;
 
     public PlaybackController(MediaPlayer mediaPlayer) {
         this.mediaPlayer = mediaPlayer;
     }
 
-    public void playSong(String songPath) {
-        if (songPath == null) return;
-        if (mediaPlayer.status().isPlaying()) {
+    public void play(String mediaPath, double startSeconds) {
+        if (mediaPath == null) return;
+
+        if (!mediaPath.equals(currentMediaPath)) {
+            currentMediaPath = mediaPath;
             mediaPlayer.controls().stop();
+            mediaPlayer.media().startPaused(mediaPath);
+
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {}
+                long length = mediaPlayer.status().length();
+                if (length > 0) {
+                    mediaPlayer.controls().setTime((long) (startSeconds * 1000));
+                    mediaPlayer.controls().play();
+                }
+            }).start();
+        } else {
+            State state = mediaPlayer.status().state();
+            if (state == State.PAUSED) {
+                mediaPlayer.controls().play();
+            } else if (state == State.STOPPED) {
+                mediaPlayer.media().startPaused(mediaPath);
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ignored) {}
+                    mediaPlayer.controls().setTime((long) (startSeconds * 1000));
+                    mediaPlayer.controls().play();
+                }).start();
+            }
         }
-        currentSongPath = songPath;
-        mediaPlayer.media().start(songPath);
     }
 
     public void pause() {
-        mediaPlayer.controls().pause();
+        if (isPlaying()) {
+            mediaPlayer.controls().pause();
+        }
+    }
+
+    public void play() {
+        State state = mediaPlayer.status().state();
+        if (state == State.PAUSED) {
+            mediaPlayer.controls().play();
+        } else if (state == State.STOPPED && currentMediaPath != null) {
+            play(currentMediaPath, 0);
+        }
     }
 
     public void stop() {
-        mediaPlayer.controls().stop();
-        currentSongPath = null;
-    }
-
-    public void toggleShuffle() {
-        shuffle = !shuffle;
-    }
-
-    public boolean isShuffleEnabled() {
-        return shuffle;
-    }
-
-    public String getCurrentSong() {
-        return currentSongPath;
-    }
-
-    public void playNext(List<String> playlist) {
-        if (playlist == null || playlist.isEmpty()) return;
-        int nextIndex;
-        if (shuffle) {
-            nextIndex = random.nextInt(playlist.size());
-        } else {
-            int currentIndex = playlist.indexOf(currentSongPath);
-            nextIndex = (currentIndex + 1) % playlist.size();
+        if (!isStopped()) {
+            mediaPlayer.controls().stop();
         }
-        String nextSong = playlist.get(nextIndex);
-        playSong(nextSong);
     }
 
-    public void playPrevious(List<String> playlist) {
-        if (playlist == null || playlist.isEmpty()) return;
-        int prevIndex;
-        if (shuffle) {
-            prevIndex = random.nextInt(playlist.size());
-        } else {
-            int currentIndex = playlist.indexOf(currentSongPath);
-            prevIndex = (currentIndex - 1 + playlist.size()) % playlist.size();
-        }
-        String prevSong = playlist.get(prevIndex);
-        playSong(prevSong);
+    public boolean isPlaying() {
+        return mediaPlayer.status().state() == State.PLAYING;
+    }
+
+    public boolean isPaused() {
+        return mediaPlayer.status().state() == State.PAUSED;
+    }
+
+    public boolean isStopped() {
+        return mediaPlayer.status().state() == State.STOPPED;
+    }
+
+    public void setCurrentPosition(double seconds) {
+        mediaPlayer.controls().setTime((long) (seconds * 1000));
+    }
+
+    public String getCurrentMediaPath() {
+        return currentMediaPath;
     }
 }
