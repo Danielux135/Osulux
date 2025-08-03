@@ -77,6 +77,53 @@ public class MusicManager {
         return songBaseFolders.get(songName);
     }
 
+    /**
+     * NUEVO MÉTODO:
+     * Devuelve la ruta completa de la imagen de portada (background) del beatmap de la canción.
+     * Retorna null si no se encuentra.
+     */
+    public String getCoverImagePath(String songName) {
+        String baseFolder = getSongBaseFolder(songName);
+        if (baseFolder == null) return null;
+
+        File beatmapFolder = new File(baseFolder);
+        File[] osuFiles = beatmapFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".osu"));
+        if (osuFiles == null || osuFiles.length == 0) return null;
+
+        String backgroundImageFileName = null;
+
+        for (File osuFile : osuFiles) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
+                String line;
+                boolean inEventsSection = false;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.equals("[Events]")) {
+                        inEventsSection = true;
+                    } else if (inEventsSection && line.startsWith("0,")) {
+                        String[] parts = line.split(",");
+                        if (parts.length >= 3) {
+                            backgroundImageFileName = parts[2].replaceAll("\"", "");
+                            break;
+                        }
+                    }
+                }
+                if (backgroundImageFileName != null) break;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        if (backgroundImageFileName != null) {
+            File bgFile = new File(beatmapFolder, backgroundImageFileName);
+            if (bgFile.exists()) {
+                return bgFile.getAbsolutePath();
+            }
+        }
+        return null;
+    }
+
     // ---------- MÉTODO PRIVADO PARA PARSEAR ARCHIVO OSU ----------
     private SongMetadata parseOsuFile(File osuFile) {
         String title = null;

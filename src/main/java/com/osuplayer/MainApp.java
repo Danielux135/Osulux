@@ -9,6 +9,8 @@ public class MainApp extends Application {
 
     private MediaPlayerFactory factory;
     private MediaPlayer mediaPlayer;
+    private ConfigManager configManager;
+    private MusicManager musicManager;
 
     @Override
     public void start(Stage primaryStage) {
@@ -16,7 +18,11 @@ public class MainApp extends Application {
         factory = new MediaPlayerFactory();
         mediaPlayer = factory.mediaPlayers().newMediaPlayer();
 
-        UIController ui = new UIController(mediaPlayer);
+        // Instanciar ConfigManager y MusicManager
+        configManager = new ConfigManager();
+        musicManager = new MusicManager();
+
+        UIController ui = new UIController(mediaPlayer, configManager, musicManager);
         ui.start(primaryStage);
 
         // Cerrar mediaPlayer y factory al cerrar la ventana
