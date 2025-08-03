@@ -76,10 +76,7 @@ public class UIController {
                         double seconds = newTime / 1000.0;
                         progressSlider.setValue(seconds);
 
-                        long length = 0;
-                        if (mediaPlayer.media().info() != null) {
-                            length = mediaPlayer.media().info().duration();
-                        }
+                        long length = mediaPlayer.media().info() != null ? mediaPlayer.media().info().duration() : 0;
 
                         updateTimeLabel(seconds, length / 1000.0);
                     });
@@ -114,7 +111,10 @@ public class UIController {
             }
         }
 
-        List<String> allSongs = new ArrayList<>(musicManager.loadSongsFromFolder(new File(configManager.getLastFolder())).keySet());
+        List<String> allSongs = new ArrayList<>();
+        if (configManager.getLastFolder() != null && !configManager.getLastFolder().isEmpty()) {
+            allSongs.addAll(musicManager.loadSongsFromFolder(new File(configManager.getLastFolder())).keySet());
+        }
         playlists.put("Todo", allSongs);
 
         List<String> favList = new ArrayList<>(favoritos);
@@ -137,21 +137,15 @@ public class UIController {
 
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Osulux");
-    
-        // --- Carga y asignación del icono ---
+
         try (InputStream iconStream = getClass().getResourceAsStream("/Icon.jpg")) {
             if (iconStream != null) {
                 Image icon = new Image(iconStream);
                 primaryStage.getIcons().add(icon);
-            } else {
-                System.err.println("No se pudo cargar el icono: /Icon.jpg no encontrado en recursos.");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-    
-        volumeSlider.setValue(configManager.getVolume() * 100);
-        mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         volumeSlider.setValue(configManager.getVolume() * 100);
         mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
@@ -393,20 +387,41 @@ public class UIController {
 
         String lastSong = configManager.getLastSong();
         if (lastSong != null && !lastSong.isEmpty()) {
-            for (String song : songListView.getItems()) {
-                if (song.equals(lastSong)) {
-                    songListView.getSelectionModel().select(song);
-                    songListView.scrollTo(song);
-                    playPauseButton.setText("▶");
-                    currentSongLabel.setText(lastSong);
-                    updateFavoriteButton(lastSong);
-                    break;
-                }
-            }
+            selectAndPreloadLastSong(lastSong);
         }
     }
 
-    // Métodos auxiliares
+    private void selectAndPreloadLastSong(String lastSong) {
+        if (lastSong == null || lastSong.isEmpty()) return;
+        int index = -1;
+        for (int i = 0; i < filteredSongList.size(); i++) {
+            if (filteredSongList.get(i).equals(lastSong)) {
+                index = i;
+                break;
+            }
+        }
+        if (index >= 0) {
+            final int idx = index;
+            Platform.runLater(() -> {
+                songListView.getSelectionModel().select(idx);
+                songListView.scrollTo(idx);
+
+                currentSongLabel.setText(lastSong);
+                updateFavoriteButton(lastSong);
+                updateCoverImage(lastSong);
+
+                String path = musicManager.getSongPath(lastSong);
+                if (path != null) {
+                    mediaPlayer.media().prepare(path);
+                    if (mediaPlayer.media().info() != null) {
+                        progressSlider.setMax(mediaPlayer.media().info().duration() / 1000.0);
+                    }
+                }
+
+                playPauseButton.setText("▶");
+            });
+        }
+    }
 
     private void exportSong(String song) {
         String songPath = musicManager.getSongPath(song);
@@ -545,6 +560,8 @@ public class UIController {
     }
 
     private void playNextSong() {
+        if (masterSongList.isEmpty()) return;
+
         if (shuffleEnabled) {
             int idx = random.nextInt(masterSongList.size());
             playSong(masterSongList.get(idx));
