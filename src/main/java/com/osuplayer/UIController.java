@@ -137,6 +137,21 @@ public class UIController {
 
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Osulux");
+    
+        // --- Carga y asignación del icono ---
+        try (InputStream iconStream = getClass().getResourceAsStream("/Icon.jpg")) {
+            if (iconStream != null) {
+                Image icon = new Image(iconStream);
+                primaryStage.getIcons().add(icon);
+            } else {
+                System.err.println("No se pudo cargar el icono: /Icon.jpg no encontrado en recursos.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    
+        volumeSlider.setValue(configManager.getVolume() * 100);
+        mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         volumeSlider.setValue(configManager.getVolume() * 100);
         mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
