@@ -131,4 +131,14 @@ public class ConfigManager {
         props.setProperty("currentSongPosition", Double.toString(position));
         saveProperties();
     }
+
+    // --- ÚLTIMA CANCIÓN REPRODUCIDA ---
+    public String getLastSong() {
+        return props.getProperty("lastSong", "");
+    }
+
+    public void setLastSong(String songName) {
+        props.setProperty("lastSong", songName);
+        saveProperties();
+    }
 }
