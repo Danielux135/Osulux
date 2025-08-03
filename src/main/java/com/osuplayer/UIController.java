@@ -8,10 +8,12 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
@@ -123,13 +125,15 @@ public class UIController {
     }
 
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("OSU! Music Player");
+        primaryStage.setTitle("Osulux");
+
         volumeSlider.setValue(configManager.getVolume() * 100);
         mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
 
-        Button chooseFolderButton = new Button("Seleccionar carpeta de canciones");
+        Button chooseFolderButton = new Button("Abrir carpeta Songs");
         TextField searchField = new TextField();
         searchField.setPromptText("Buscar canciones o artistas...");
+        searchField.setPrefWidth(600);
 
         Button previousButton = createControlButton("⏮");
         playPauseButton = createControlButton("▶");
@@ -165,7 +169,7 @@ public class UIController {
             }
         });
 
-        // *** MENÚ CONTEXTUAL DE CANCIONES ***
+        // Menú contextual canciones
         songListView.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
@@ -178,8 +182,8 @@ public class UIController {
 
             MenuItem toggleFavoriteItem = new MenuItem();
             toggleFavoriteItem.textProperty().bind(
-                cell.itemProperty().map(item -> item == null ? "" :
-                        favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos")
+                    cell.itemProperty().map(item -> item == null ? "" :
+                            favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos")
             );
             toggleFavoriteItem.setOnAction(e -> {
                 String item = cell.getItem();
@@ -196,29 +200,26 @@ public class UIController {
             });
             contextMenu.getItems().add(toggleFavoriteItem);
 
-            if (!playlists.isEmpty()) {
-                Menu addToPlaylistMenu = new Menu("Añadir a playlist");
-                for (String playlistName : playlists.keySet()) {
-                    if (!playlistName.equals("Todo")) {
-                        MenuItem playlistItem = new MenuItem(playlistName);
-                        playlistItem.setOnAction(e -> {
-                            String song = cell.getItem();
-                            if (song != null) {
-                                List<String> list = playlists.get(playlistName);
-                                if (list != null && !list.contains(song)) {
-                                    list.add(song);
-                                    configManager.setPlaylists(playlists);
-                                    if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
-                                }
+            Menu addToPlaylistMenu = new Menu("Añadir a playlist");
+            for (String playlistName : playlists.keySet()) {
+                if (!playlistName.equals("Todo")) {
+                    MenuItem playlistItem = new MenuItem(playlistName);
+                    playlistItem.setOnAction(e -> {
+                        String song = cell.getItem();
+                        if (song != null) {
+                            List<String> list = playlists.get(playlistName);
+                            if (list != null && !list.contains(song)) {
+                                list.add(song);
+                                configManager.setPlaylists(playlists);
+                                if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
                             }
-                        });
-                        addToPlaylistMenu.getItems().add(playlistItem);
-                    }
+                        }
+                    });
+                    addToPlaylistMenu.getItems().add(playlistItem);
                 }
-                contextMenu.getItems().add(addToPlaylistMenu);
             }
+            contextMenu.getItems().add(addToPlaylistMenu);
 
-            // ** NUEVA OPCIÓN: EXPORTAR CANCIÓN **
             MenuItem exportSongItem = new MenuItem("Exportar canción");
             exportSongItem.setOnAction(e -> {
                 String song = cell.getItem();
@@ -227,9 +228,49 @@ public class UIController {
             contextMenu.getItems().add(exportSongItem);
 
             cell.emptyProperty().addListener((obs, wasEmpty, isNowEmpty) ->
-                cell.setContextMenu(isNowEmpty ? null : contextMenu)
+                    cell.setContextMenu(isNowEmpty ? null : contextMenu)
             );
             return cell;
+        });
+
+        // Playlist con menú contextual eliminar
+        playlistListView.setCellFactory(lv -> {
+            ListCell<String> cell = new ListCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty ? null : item);
+                    if (item != null && (item.equals("Todo") || item.equals("Favoritos"))) {
+                        setStyle("-fx-font-weight: bold;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            };
+            ContextMenu contextMenu = new ContextMenu();
+            MenuItem deleteItem = new MenuItem("Eliminar playlist");
+            deleteItem.setOnAction(e -> {
+                String selected = cell.getItem();
+                if (selected != null && !selected.equals("Todo") && !selected.equals("Favoritos")) {
+                    playlists.remove(selected);
+                    configManager.setPlaylists(playlists);
+                    updatePlaylistListViewItems();
+                    selectPlaylist("Todo");
+                }
+            });
+            cell.itemProperty().addListener((obs, oldVal, newVal) -> {
+                contextMenu.getItems().clear();
+                if (newVal != null && !newVal.equals("Todo") && !newVal.equals("Favoritos")) {
+                    contextMenu.getItems().add(deleteItem);
+                    cell.setContextMenu(contextMenu);
+                } else {
+                    cell.setContextMenu(null);
+                }
+            });
+            return cell;
+        });
+        playlistListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null && !n.equals(currentPlaylist)) selectPlaylist(n);
         });
 
         progressSlider.setMin(0);
@@ -264,28 +305,31 @@ public class UIController {
         HBox progressBox = new HBox(10, progressSlider, timeLabel);
         progressBox.setAlignment(Pos.CENTER);
 
-        Button newPlaylistButton = new Button("Nueva Playlist");
+        newPlaylistButton = new Button("Nueva Playlist");
         newPlaylistButton.setOnAction(e -> createNewPlaylist());
 
-        playlistListView.setPrefWidth(150);
-        playlistListView.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : item);
-                setStyle((item != null && (item.equals("Todo") || item.equals("Favoritos"))) ?
-                        "-fx-font-weight: bold;" : "");
-            }
-        });
-        playlistListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n != null && !n.equals(currentPlaylist)) selectPlaylist(n);
-        });
-
-        VBox playlistBox = new VBox(5, playlistListView, newPlaylistButton);
+        VBox playlistBox = new VBox(5);
         playlistBox.setPrefWidth(170);
+        playlistBox.getChildren().addAll(playlistListView);
+        HBox newPlaylistButtonBox = new HBox(newPlaylistButton);
+        newPlaylistButtonBox.setAlignment(Pos.CENTER);
+        playlistBox.getChildren().add(newPlaylistButtonBox);
+
+        // Layout superior: botón a la izquierda, buscador centrado
+        HBox topLeftBox = new HBox(chooseFolderButton);
+        topLeftBox.setAlignment(Pos.CENTER_LEFT);
+        topLeftBox.setPrefWidth(170);
+
+        HBox searchBox = new HBox(searchField);
+        searchBox.setAlignment(Pos.CENTER);
+        searchBox.setPrefWidth(600);
+
+        HBox topBox = new HBox(10, topLeftBox, searchBox);
+        topBox.setAlignment(Pos.CENTER_LEFT);
+        BorderPane.setMargin(topBox, new Insets(10));
 
         BorderPane root = new BorderPane();
-        root.setTop(new HBox(10, chooseFolderButton, searchField));
+        root.setTop(topBox);
         root.setCenter(songListView);
         root.setRight(coverBox);
         root.setBottom(new VBox(5, controlBox, progressBox));
@@ -313,11 +357,21 @@ public class UIController {
         }
     }
 
+    private void scrollToCurrentSong() {
+        Platform.runLater(() -> {
+            String song = currentSongLabel.getText();
+            if (song != null && songListView.getItems().contains(song)) {
+                int index = songListView.getItems().indexOf(song);
+                songListView.scrollTo(index);
+            }
+        });
+    }
+
     private void exportSong(String song) {
         String songPath = musicManager.getSongPath(song);
         if (songPath == null) return;
         try {
-            File exportDir = new File("Export");
+            File exportDir = new File("Exportado");
             if (!exportDir.exists()) exportDir.mkdirs();
 
             String extension = songPath.substring(songPath.lastIndexOf('.'));
@@ -341,6 +395,7 @@ public class UIController {
         masterSongList.clear();
         masterSongList.addAll(songs);
         filteredSongList.setPredicate(s -> true);
+        scrollToCurrentSong();
     }
 
     private Button createControlButton(String text) {
@@ -406,6 +461,7 @@ public class UIController {
             mediaPlayer.controls().play();
             configManager.setCurrentSong(song, startPosition);
             updateCoverImage(path);
+            scrollToCurrentSong();
         });
         currentSongLabel.setText(song);
         updateFavoriteButton(song);
