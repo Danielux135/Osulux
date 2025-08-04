@@ -550,22 +550,24 @@ public class UIController {
     private void playSong(String songName) {
         String songPath = musicManager.getSongPath(songName);
         if (songPath == null) return;
-
+    
         mediaPlayer.media().play(songPath);
-
+    
         currentSongLabel.setText(songName);
         updateFavoriteButton(songName);
         updateCoverImage(songName);
-
+    
         long duration = mediaPlayer.media().info() != null ? mediaPlayer.media().info().duration() : 0;
         progressSlider.setMax(duration > 0 ? duration / 1000.0 : 0);
-
+    
         playPauseButton.setText("⏸");
-
         playHistory.push(songName);
-
         configManager.setLastSong(songName);
+    
+        // --- NUEVO: hacer scroll a la canción actual ---
+        scrollToCurrentSong();
     }
+    
 
     private void updateFavoriteButton(String songName) {
         if (songName != null && favoritos.contains(songName)) {
