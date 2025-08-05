@@ -1,8 +1,8 @@
 package com.osuplayer;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
@@ -174,7 +174,7 @@ public class UIController {
         Button chooseFolderButton = new Button("Abrir carpeta Songs");
 
         searchField = new TextField();
-        searchField.setPromptText("Buscar canciones o artistas...");
+        searchField.setPromptText("Buscar canciones, artistas o tags...");
         searchField.setPrefWidth(600);
 
         Button previousButton = createControlButton("⏮");
@@ -217,6 +217,7 @@ public class UIController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
+
                     if (empty || item == null) {
                         setContextMenu(null);
                         return;
@@ -324,7 +325,7 @@ public class UIController {
         });
 
         progressSlider.setMin(0);
-        progressSlider.setMax(0); // inicializamos en 0 para que se actualice al cargar la canción
+        progressSlider.setMax(0);
         progressSlider.setValue(0);
         progressSlider.setOnMousePressed(e -> isSeeking = true);
         progressSlider.setOnMouseReleased(e -> {
@@ -390,9 +391,18 @@ public class UIController {
 
         filteredSongList = new FilteredList<>(masterSongList, s -> true);
         songListView.setItems(filteredSongList);
-        searchField.textProperty().addListener((obs, o, n) ->
-                filteredSongList.setPredicate(item -> item.toLowerCase().contains(n.toLowerCase()))
-        );
+        searchField.textProperty().addListener((obs, o, n) -> {
+            String lower = n.toLowerCase();
+            filteredSongList.setPredicate(item -> {
+                if (item.toLowerCase().contains(lower)) return true;
+                // Filtrar por tags
+                List<String> tags = musicManager.getTags(item);
+                for (String tag : tags) {
+                    if (tag.toLowerCase().contains(lower)) return true;
+                }
+                return false;
+            });
+        });
 
         String lastFolder = configManager.getLastFolder();
         if (lastFolder != null && !lastFolder.isEmpty()) {
@@ -497,6 +507,7 @@ public class UIController {
     }
 
     private void selectPlaylist(String playlistName) {
+        if (playlistName == null) return;
         currentPlaylist = playlistName;
         loadPlaylistSongs(playlistName);
     }
@@ -709,20 +720,16 @@ public class UIController {
 
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(name -> {
-            String trimmedName = name.trim();
-            if (trimmedName.isEmpty() || playlists.containsKey(trimmedName)) {
+            if (name.trim().isEmpty() || playlists.containsKey(name.trim())) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setTitle("Error");
                 alert.setHeaderText(null);
                 alert.setContentText("Nombre inválido o ya existe la playlist.");
                 alert.showAndWait();
             } else {
-                playlists.put(trimmedName, new ArrayList<>());
+                playlists.put(name.trim(), new ArrayList<>());
                 configManager.setPlaylists(playlists);
                 updatePlaylistListViewItems();
-
-                // Fijar la playlist nueva seleccionada para que aparezca en la lista inmediatamente
-                playlistListView.getSelectionModel().select(trimmedName);
             }
         });
     }
