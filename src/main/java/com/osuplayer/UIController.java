@@ -76,19 +76,11 @@ public class UIController {
                 if (!isSeeking) {
                     Platform.runLater(() -> {
                         double seconds = newTime / 1000.0;
-
-                        // Si el slider max es 0 (no inicializado), intentar obtener duración
                         if (progressSlider.getMax() <= 0) {
                             long length = mediaPlayer.media().info() != null ? mediaPlayer.media().info().duration() : 0;
-                            if (length > 0) {
-                                progressSlider.setMax(length / 1000.0);
-                            }
+                            if (length > 0) progressSlider.setMax(length / 1000.0);
                         }
-
-                        if (seconds <= progressSlider.getMax()) {
-                            progressSlider.setValue(seconds);
-                        }
-
+                        if (seconds <= progressSlider.getMax()) progressSlider.setValue(seconds);
                         long length = mediaPlayer.media().info() != null ? mediaPlayer.media().info().duration() : 0;
                         updateTimeLabel(seconds, length / 1000.0);
                     });
@@ -104,9 +96,7 @@ public class UIController {
             public void lengthChanged(MediaPlayer mediaPlayer, long newLength) {
                 Platform.runLater(() -> {
                     double maxSeconds = newLength / 1000.0;
-                    if (maxSeconds > 0) {
-                        progressSlider.setMax(maxSeconds);
-                    }
+                    if (maxSeconds > 0) progressSlider.setMax(maxSeconds);
                 });
             }
         });
@@ -150,9 +140,7 @@ public class UIController {
         playlistListView.getItems().add("Todo");
         playlistListView.getItems().add("Favoritos");
         for (String key : playlists.keySet()) {
-            if (!key.equals("Todo") && !key.equals("Favoritos")) {
-                playlistListView.getItems().add(key);
-            }
+            if (!key.equals("Todo") && !key.equals("Favoritos")) playlistListView.getItems().add(key);
         }
         playlistListView.getSelectionModel().select(currentPlaylist);
     }
@@ -161,13 +149,8 @@ public class UIController {
         primaryStage.setTitle("Osulux");
 
         try (InputStream iconStream = getClass().getResourceAsStream("/Icon.jpg")) {
-            if (iconStream != null) {
-                Image icon = new Image(iconStream);
-                primaryStage.getIcons().add(icon);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            if (iconStream != null) primaryStage.getIcons().add(new Image(iconStream));
+        } catch (Exception e) { e.printStackTrace(); }
 
         volumeSlider.setValue(configManager.getVolume() * 100);
         mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
@@ -189,14 +172,9 @@ public class UIController {
         chooseFolderButton.setOnAction(e -> {
             DirectoryChooser directoryChooser = new DirectoryChooser();
             directoryChooser.setTitle("Selecciona la carpeta de canciones de OSU!");
-
-            String userHome = System.getProperty("user.home");
-            File defaultDir = new File(userHome + File.separator + "AppData" + File.separator + "Local" + File.separator + "osu!" + File.separator + "Songs");
-
-            if (defaultDir.exists() && defaultDir.isDirectory()) {
-                directoryChooser.setInitialDirectory(defaultDir);
-            }
-
+            File defaultDir = new File(System.getProperty("user.home") + File.separator +
+                    "AppData" + File.separator + "Local" + File.separator + "osu!" + File.separator + "Songs");
+            if (defaultDir.exists() && defaultDir.isDirectory()) directoryChooser.setInitialDirectory(defaultDir);
             File selectedDirectory = directoryChooser.showDialog(primaryStage);
             if (selectedDirectory != null) {
                 musicManager.setLastFolderPath(selectedDirectory.getAbsolutePath());
@@ -212,20 +190,19 @@ public class UIController {
         stopButton.setOnAction(e -> stopPlayback());
         nextButton.setOnAction(e -> playNextSong());
 
+        // Context menu dinámico corregido
         songListView.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
-
                     if (empty || item == null) {
                         setContextMenu(null);
                         return;
                     }
 
                     ContextMenu contextMenu = new ContextMenu();
-
                     MenuItem toggleFavoriteItem = new MenuItem(
                             favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos"
                     );
@@ -241,24 +218,22 @@ public class UIController {
                     });
                     contextMenu.getItems().add(toggleFavoriteItem);
 
-                    if (!playlists.isEmpty()) {
-                        Menu addToPlaylistMenu = new Menu("Añadir a playlist");
-                        for (String playlistName : playlists.keySet()) {
-                            if (!playlistName.equals("Todo")) {
-                                MenuItem playlistItem = new MenuItem(playlistName);
-                                playlistItem.setOnAction(e -> {
-                                    List<String> list = playlists.get(playlistName);
-                                    if (list != null && !list.contains(item)) {
-                                        list.add(item);
-                                        configManager.setPlaylists(playlists);
-                                        if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
-                                    }
-                                });
-                                addToPlaylistMenu.getItems().add(playlistItem);
-                            }
+                    Menu addToPlaylistMenu = new Menu("Añadir a playlist");
+                    for (String playlistName : playlists.keySet()) {
+                        if (!playlistName.equals("Todo")) {
+                            MenuItem playlistItem = new MenuItem(playlistName);
+                            playlistItem.setOnAction(e -> {
+                                List<String> list = playlists.get(playlistName);
+                                if (list != null && !list.contains(item)) {
+                                    list.add(item);
+                                    configManager.setPlaylists(playlists);
+                                    if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
+                                }
+                            });
+                            addToPlaylistMenu.getItems().add(playlistItem);
                         }
-                        contextMenu.getItems().add(addToPlaylistMenu);
                     }
+                    contextMenu.getItems().add(addToPlaylistMenu);
 
                     MenuItem exportSongItem = new MenuItem("Exportar canción");
                     exportSongItem.setOnAction(e -> exportSong(item));
@@ -283,11 +258,9 @@ public class UIController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
-                    if (item != null && (item.equals("Todo") || item.equals("Favoritos"))) {
+                    if (item != null && (item.equals("Todo") || item.equals("Favoritos")))
                         setStyle("-fx-font-weight: bold;");
-                    } else {
-                        setStyle("");
-                    }
+                    else setStyle("");
                 }
             };
 
@@ -302,23 +275,16 @@ public class UIController {
                     selectPlaylist("Todo");
                 }
             });
-
             MenuItem exportAllItem = new MenuItem("Exportar todas las canciones");
             exportAllItem.setOnAction(e -> exportPlaylist(cell.getItem()));
-
             cell.itemProperty().addListener((obs, oldVal, newVal) -> {
                 contextMenu.getItems().clear();
                 if (newVal != null) {
                     contextMenu.getItems().add(exportAllItem);
-                    if (!newVal.equals("Todo") && !newVal.equals("Favoritos")) {
-                        contextMenu.getItems().add(deleteItem);
-                    }
+                    if (!newVal.equals("Todo") && !newVal.equals("Favoritos")) contextMenu.getItems().add(deleteItem);
                     cell.setContextMenu(contextMenu);
-                } else {
-                    cell.setContextMenu(null);
-                }
+                } else cell.setContextMenu(null);
             });
-
             return cell;
         });
         playlistListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
@@ -326,14 +292,13 @@ public class UIController {
         });
 
         progressSlider.setMin(0);
-        progressSlider.setMax(0); // inicializamos en 0 para que se actualice al cargar la canción
+        progressSlider.setMax(0);
         progressSlider.setValue(0);
         progressSlider.setOnMousePressed(e -> isSeeking = true);
         progressSlider.setOnMouseReleased(e -> {
             State state = mediaPlayer.status().state();
-            if (state == State.PLAYING || state == State.PAUSED) {
+            if (state == State.PLAYING || state == State.PAUSED)
                 mediaPlayer.controls().setTime((long) (progressSlider.getValue() * 1000));
-            }
             isSeeking = false;
         });
 
@@ -408,9 +373,7 @@ public class UIController {
         }
 
         String lastSong = configManager.getLastSong();
-        if (lastSong != null && !lastSong.isEmpty()) {
-            selectAndPreloadLastSong(lastSong);
-        }
+        if (lastSong != null && !lastSong.isEmpty()) selectAndPreloadLastSong(lastSong);
     }
 
     private void selectAndPreloadLastSong(String lastSong) {
@@ -543,31 +506,28 @@ public class UIController {
     private void playSelectedSong() {
         String selectedSong = songListView.getSelectionModel().getSelectedItem();
         if (selectedSong == null) return;
-
         playSong(selectedSong);
     }
 
     private void playSong(String songName) {
         String songPath = musicManager.getSongPath(songName);
         if (songPath == null) return;
-    
+
         mediaPlayer.media().play(songPath);
-    
+
         currentSongLabel.setText(songName);
         updateFavoriteButton(songName);
         updateCoverImage(songName);
-    
+
         long duration = mediaPlayer.media().info() != null ? mediaPlayer.media().info().duration() : 0;
         progressSlider.setMax(duration > 0 ? duration / 1000.0 : 0);
-    
+
         playPauseButton.setText("⏸");
         playHistory.push(songName);
         configManager.setLastSong(songName);
-    
-        // --- NUEVO: hacer scroll a la canción actual ---
+
         scrollToCurrentSong();
     }
-    
 
     private void updateFavoriteButton(String songName) {
         if (songName != null && favoritos.contains(songName)) {
