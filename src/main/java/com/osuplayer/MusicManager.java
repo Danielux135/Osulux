@@ -3,7 +3,6 @@ package com.osuplayer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -21,16 +20,18 @@ public class MusicManager {
     private final Map<String, String> songs = new LinkedHashMap<>();
     private String lastFolderPath;
 
-    // Nueva estructura para mapear el nombre de la canción a la carpeta beatmap
     private final Map<String, String> songBaseFolders = new HashMap<>();
 
-    // Mapa para guardar tags de cada canción
+    // Cambiado: ahora mapa de canción a lista de creadores
+    private final Map<String, List<String>> songCreators = new HashMap<>();
+
     private final Map<String, List<String>> songTags = new HashMap<>();
 
     public Map<String, String> loadSongsFromFolder(File folder) {
         songs.clear();
         songBaseFolders.clear();
         songTags.clear();
+        songCreators.clear();
 
         if (folder == null || !folder.exists() || !folder.isDirectory()) return songs;
 
@@ -41,23 +42,24 @@ public class MusicManager {
             File[] osuFiles = beatmap.listFiles((dir, name) -> name.toLowerCase().endsWith(".osu"));
             if (osuFiles == null || osuFiles.length == 0) continue;
 
-            // Intentar extraer datos del primer archivo .osu válido
             for (File osuFile : osuFiles) {
                 SongMetadata meta = parseOsuFile(osuFile);
                 if (meta != null && meta.audioFilename != null) {
                     File audioFile = new File(beatmap, meta.audioFilename);
                     if (audioFile.exists()) {
                         String displayName = meta.artist + " - " + meta.title;
-                        if (!songs.containsKey(displayName)) { // Evitar duplicados
+                        if (!songs.containsKey(displayName)) {
                             songs.put(displayName, audioFile.getAbsolutePath());
-                            // Guardar carpeta base para la canción
                             songBaseFolders.put(displayName, beatmap.getAbsolutePath());
 
-                            // Extraer tags y guardar en songTags
                             List<String> tags = parseTags(osuFile);
                             songTags.put(displayName, tags);
+
+                            // Cambiado: guardamos lista con 1 creador o lista vacía
+                            List<String> creators = parseCreators(osuFile);
+                            songCreators.put(displayName, creators);
                         }
-                        break; // tomar solo la primera canción válida
+                        break;
                     }
                 }
             }
@@ -69,17 +71,6 @@ public class MusicManager {
         return songs.get(songName);
     }
 
-    public void exportSongPath(String songName) {
-        String path = getSongPath(songName);
-        if (path != null) {
-            try (FileWriter writer = new FileWriter("exported_song_path.txt", false)) {
-                writer.write(path);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void setLastFolderPath(String path) {
         this.lastFolderPath = path;
     }
@@ -88,19 +79,10 @@ public class MusicManager {
         return lastFolderPath;
     }
 
-    /**
-     * Devuelve la carpeta base (beatmap folder) donde está la canción.
-     * Retorna null si no se encuentra.
-     */
     public String getSongBaseFolder(String songName) {
         return songBaseFolders.get(songName);
     }
 
-    /**
-     * NUEVO MÉTODO:
-     * Devuelve la ruta completa de la imagen de portada (background) del beatmap de la canción.
-     * Retorna null si no se encuentra.
-     */
     public String getCoverImagePath(String songName) {
         String baseFolder = getSongBaseFolder(songName);
         if (baseFolder == null) return null;
@@ -143,7 +125,6 @@ public class MusicManager {
         return null;
     }
 
-    // ---------- MÉTODO PRIVADO PARA PARSEAR ARCHIVO OSU ----------
     private SongMetadata parseOsuFile(File osuFile) {
         String title = null;
         String artist = null;
@@ -176,7 +157,6 @@ public class MusicManager {
         return null;
     }
 
-    // Nuevo método para extraer tags de un archivo .osu
     private List<String> parseTags(File osuFile) {
         List<String> tags = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
@@ -188,14 +168,13 @@ public class MusicManager {
                     inMetadataSection = true;
                 } else if (inMetadataSection) {
                     if (line.startsWith("Tags:")) {
-                        String tagLine = line.substring(5).trim(); // Quitar "Tags:"
+                        String tagLine = line.substring(5).trim();
                         String[] splitTags = tagLine.split("\\s+");
                         for (String tag : splitTags) {
                             if (!tag.isEmpty()) tags.add(tag);
                         }
-                        break; // Ya leí los tags
+                        break;
                     } else if (line.startsWith("[") && line.endsWith("]")) {
-                        // Se terminó la sección Metadata
                         break;
                     }
                 }
@@ -206,12 +185,43 @@ public class MusicManager {
         return tags;
     }
 
-    // Método público para obtener los tags de una canción
+    // Cambiado: parseCreators devuelve lista con 1 creador (si existe)
+    private List<String> parseCreators(File osuFile) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
+            String line;
+            boolean inMetadataSection = false;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.equals("[Metadata]")) {
+                    inMetadataSection = true;
+                } else if (inMetadataSection) {
+                    if (line.startsWith("Creator:")) {
+                        String creator = line.substring(8).trim();
+                        if (!creator.isEmpty()) {
+                            return Collections.singletonList(creator);
+                        } else {
+                            return Collections.emptyList();
+                        }
+                    } else if (line.startsWith("[") && line.endsWith("]")) {
+                        break;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return Collections.emptyList();
+    }
+
     public List<String> getTags(String songName) {
         return songTags.getOrDefault(songName, Collections.emptyList());
     }
 
-    // Clase interna para guardar la metadata
+    // Nuevo método esperado por UIController
+    public List<String> getCreators(String songName) {
+        return songCreators.getOrDefault(songName, Collections.emptyList());
+    }
+
     private static class SongMetadata {
         String title;
         String artist;
