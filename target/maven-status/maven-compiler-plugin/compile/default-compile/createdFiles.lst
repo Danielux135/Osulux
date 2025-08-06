@@ -1,9 +1,14 @@
 com\osuplayer\DialogHelper.class
 com\osuplayer\UIController$1.class
 com\osuplayer\UIController.class
+com\osuplayer\CoverManager.class
 com\osuplayer\PlaylistManager.class
+com\osuplayer\SearchManager.class
 com\osuplayer\PlaybackController.class
+com\osuplayer\HistoryManager.class
+com\osuplayer\ExportManager.class
 com\osuplayer\MainApp.class
+com\osuplayer\UIController$4.class
 com\osuplayer\FavoritesManager.class
 com\osuplayer\UIController$3.class
 com\osuplayer\MusicManager$SongMetadata.class

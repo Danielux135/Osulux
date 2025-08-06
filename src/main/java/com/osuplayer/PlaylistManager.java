@@ -9,7 +9,15 @@ public class PlaylistManager {
 
     public PlaylistManager() {
         this.configManager = new ConfigManager();
-        this.playlists = new HashMap<>(configManager.getPlaylists());
+        this.playlists = new HashMap<>();
+        initPlaylists();
+    }
+
+    private void initPlaylists() {
+        Map<String, List<String>> loaded = configManager.getPlaylists();
+        if (loaded != null) {
+            playlists.putAll(loaded);
+        }
         if (!playlists.containsKey("Default")) {
             playlists.put("Default", new ArrayList<>());
             savePlaylists();

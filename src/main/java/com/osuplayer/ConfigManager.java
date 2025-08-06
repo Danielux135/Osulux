@@ -141,4 +141,30 @@ public class ConfigManager {
         props.setProperty("lastSong", songName);
         saveProperties();
     }
+
+    // --- HISTORIAL DE REPRODUCCIÓN ---
+    public void setPlayHistory(List<String> history) {
+        String joined = String.join(";", history);
+        props.setProperty("playHistory", joined);
+        saveProperties();
+    }
+
+    public List<String> getPlayHistory() {
+        String joined = props.getProperty("playHistory", "");
+        if (joined.isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(Arrays.asList(joined.split(";")));
+    }
+
+    public void setHistoryIndex(int index) {
+        props.setProperty("historyIndex", String.valueOf(index));
+        saveProperties();
+    }
+
+    public int getHistoryIndex() {
+        try {
+            return Integer.parseInt(props.getProperty("historyIndex", "-1"));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
 }
