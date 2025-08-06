@@ -1,11 +1,13 @@
 package com.osuplayer;
 
-import javafx.scene.control.*;
-import javafx.stage.DirectoryChooser;
-
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
+
+import javafx.scene.control.Alert;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.TextInputDialog;
+import javafx.stage.DirectoryChooser;
 
 public class DialogHelper {
 
