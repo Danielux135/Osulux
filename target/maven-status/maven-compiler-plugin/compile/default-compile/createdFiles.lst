@@ -9,6 +9,7 @@ com\osuplayer\HistoryManager.class
 com\osuplayer\ExportManager.class
 com\osuplayer\MainApp.class
 com\osuplayer\UIController$4.class
+com\osuplayer\UIController$5.class
 com\osuplayer\FavoritesManager.class
 com\osuplayer\UIController$3.class
 com\osuplayer\MusicManager$SongMetadata.class

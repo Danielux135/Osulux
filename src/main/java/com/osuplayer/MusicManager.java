@@ -24,12 +24,8 @@ public class MusicManager {
     private final Map<String, List<String>> songCreators = new HashMap<>();
     private final Map<String, List<String>> songTags = new HashMap<>();
 
-    // Manejo de historial
     private final HistoryManager historyManager = new HistoryManager();
 
-    // -----------------------------------------------------
-    // Carga de canciones desde carpeta osu! Songs
-    // -----------------------------------------------------
     public Map<String, String> loadSongsFromFolder(File folder) {
         songs.clear();
         songBaseFolders.clear();
@@ -57,7 +53,7 @@ public class MusicManager {
                             songTags.put(displayName, parseTags(osuFile));
                             songCreators.put(displayName, parseCreators(osuFile));
                         }
-                        break; // Solo uno por beatmap
+                        break;
                     }
                 }
             }
@@ -65,7 +61,6 @@ public class MusicManager {
         return songs;
     }
 
-    // Obtiene la ruta completa del archivo de audio para una canción
     public String getSongPath(String songName) {
         return songs.get(songName);
     }
@@ -82,7 +77,6 @@ public class MusicManager {
         return songBaseFolders.get(songName);
     }
 
-    // Obtiene la ruta de la imagen de portada (background) del beatmap
     public String getCoverImagePath(String songName) {
         String baseFolder = getSongBaseFolder(songName);
         if (baseFolder == null) return null;
@@ -125,9 +119,19 @@ public class MusicManager {
         return null;
     }
 
-    // -----------------------------------------------------
-    // Lectura y parseo de archivos .osu para obtener metadatos
-    // -----------------------------------------------------
+    public String getVideoPath(String songName) {
+        String baseFolder = getSongBaseFolder(songName);
+        if (baseFolder == null) return null;
+    
+        File folder = new File(baseFolder);
+        File[] videoFiles = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".mp4"));
+        if (videoFiles != null && videoFiles.length > 0) {
+            return videoFiles[0].getAbsolutePath();
+        }
+    
+        return null;
+    }
+
     private SongMetadata parseOsuFile(File osuFile) {
         String title = null, artist = null, audioFilename = null;
 
@@ -159,7 +163,6 @@ public class MusicManager {
         }
     }
 
-    // Extrae tags desde la sección [Metadata] del archivo .osu
     private List<String> parseTags(File osuFile) {
         List<String> tags = new ArrayList<>();
 
@@ -181,7 +184,6 @@ public class MusicManager {
                         }
                         break;
                     } else if (line.startsWith("[") && line.endsWith("]")) {
-                        // Fin sección metadata
                         break;
                     }
                 }
@@ -192,7 +194,6 @@ public class MusicManager {
         return tags;
     }
 
-    // Extrae el creador de la canción desde la sección [Metadata] del archivo .osu
     private List<String> parseCreators(File osuFile) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
             String line;
@@ -208,7 +209,7 @@ public class MusicManager {
                         String creator = line.substring(8).trim();
                         return creator.isEmpty() ? Collections.emptyList() : Collections.singletonList(creator);
                     } else if (line.startsWith("[") && line.endsWith("]")) {
-                        break; // Fin sección metadata
+                        break;
                     }
                 }
             }
@@ -218,9 +219,6 @@ public class MusicManager {
         return Collections.emptyList();
     }
 
-    // -----------------------------------------------------
-    // Métodos para obtener tags y creadores de una canción
-    // -----------------------------------------------------
     public List<String> getTags(String songName) {
         return songTags.getOrDefault(songName, Collections.emptyList());
     }
@@ -229,9 +227,6 @@ public class MusicManager {
         return songCreators.getOrDefault(songName, Collections.emptyList());
     }
 
-    // -----------------------------------------------------
-    // Búsqueda simple de canciones por nombre o tags
-    // -----------------------------------------------------
     public List<String> searchSongs(String query) {
         if (query == null || query.isEmpty()) return new ArrayList<>(songs.keySet());
 
@@ -255,9 +250,6 @@ public class MusicManager {
         return results;
     }
 
-    // -----------------------------------------------------
-    // Manejo de historial de canciones reproducidas
-    // -----------------------------------------------------
     public void addToHistory(String songName) {
         historyManager.addSong(songName);
     }
@@ -302,9 +294,6 @@ public class MusicManager {
         historyManager.setHistory(history, index);
     }
 
-    // -----------------------------------------------------
-    // Clase auxiliar para contener metadatos de la canción
-    // -----------------------------------------------------
     private static class SongMetadata {
         final String title;
         final String artist;

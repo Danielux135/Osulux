@@ -3,33 +3,36 @@ package com.osuplayer;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory;
-import uk.co.caprica.vlcj.player.base.MediaPlayer;
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
 
 public class MainApp extends Application {
 
     private MediaPlayerFactory factory;
-    private MediaPlayer mediaPlayer;
+    private EmbeddedMediaPlayer audioPlayer;
+    private EmbeddedMediaPlayer videoPlayer;
     private ConfigManager configManager;
     private MusicManager musicManager;
 
     @Override
     public void start(Stage primaryStage) {
-        // Crear MediaPlayer una sola vez y pasarlo al UIController
         factory = new MediaPlayerFactory();
-        mediaPlayer = factory.mediaPlayers().newMediaPlayer();
+        audioPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer();
+        videoPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer();
 
-        // Instanciar ConfigManager y MusicManager
         configManager = new ConfigManager();
         musicManager = new MusicManager();
 
-        UIController ui = new UIController(mediaPlayer, configManager, musicManager);
+        UIController ui = new UIController(audioPlayer, videoPlayer, configManager, musicManager);
         ui.start(primaryStage);
 
-        // Cerrar mediaPlayer y factory al cerrar la ventana
         primaryStage.setOnCloseRequest(event -> {
-            if (mediaPlayer != null) {
-                mediaPlayer.controls().stop();
-                mediaPlayer.release();
+            if (audioPlayer != null) {
+                audioPlayer.controls().stop();
+                audioPlayer.release();
+            }
+            if (videoPlayer != null) {
+                videoPlayer.controls().stop();
+                videoPlayer.release();
             }
             if (factory != null) {
                 factory.release();

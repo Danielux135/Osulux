@@ -38,9 +38,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import uk.co.caprica.vlcj.player.base.MediaPlayer;
+import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.base.State;
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
 
 public class UIController {
 
@@ -51,7 +52,9 @@ public class UIController {
     private FilteredList<String> filteredSongList;
     private final ObservableList<String> masterSongList = FXCollections.observableArrayList();
 
-    private final MediaPlayer mediaPlayer;
+    private final EmbeddedMediaPlayer audioPlayer;
+    private final EmbeddedMediaPlayer videoPlayer;
+
     private boolean isSeeking = false;
     private boolean shuffleEnabled = false;
     private final Random random = new Random();
@@ -72,6 +75,7 @@ public class UIController {
     private Button newPlaylistButton;
 
     private final ImageView coverImageView = new ImageView();
+
     private String currentPlaylist = "Todo";
 
     private TextField searchField;
@@ -81,10 +85,11 @@ public class UIController {
 
     private final SearchManager searchManager;
 
-    public UIController(MediaPlayer mediaPlayer, ConfigManager configManager, MusicManager musicManager) {
-        this.mediaPlayer = mediaPlayer;
-        this.musicManager = musicManager;
+    public UIController(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, MusicManager musicManager) {
+        this.audioPlayer = audioPlayer;
+        this.videoPlayer = videoPlayer;
         this.configManager = configManager;
+        this.musicManager = musicManager;
 
         this.exportManager = new ExportManager(musicManager);
         this.coverManager = new CoverManager(musicManager);
@@ -93,13 +98,12 @@ public class UIController {
 
         initPlaylists();
 
-        mediaPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+        audioPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
             @Override
-            public void timeChanged(MediaPlayer mediaPlayer, long newTime) {
+            public void timeChanged(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer, long newTime) {
                 if (!isSeeking) {
                     Platform.runLater(() -> {
                         double seconds = newTime / 1000.0;
-
                         if (progressSlider.getMax() <= 0) {
                             long length = 0;
                             if (mediaPlayer.media().info() != null) {
@@ -109,11 +113,9 @@ public class UIController {
                                 progressSlider.setMax(length / 1000.0);
                             }
                         }
-
                         if (seconds <= progressSlider.getMax()) {
                             progressSlider.setValue(seconds);
                         }
-
                         long length = 0;
                         if (mediaPlayer.media().info() != null) {
                             length = mediaPlayer.media().info().duration();
@@ -124,17 +126,28 @@ public class UIController {
             }
 
             @Override
-            public void finished(MediaPlayer mediaPlayer) {
+            public void finished(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer) {
                 Platform.runLater(() -> playNextSong());
             }
 
             @Override
-            public void lengthChanged(MediaPlayer mediaPlayer, long newLength) {
+            public void lengthChanged(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer, long newLength) {
                 Platform.runLater(() -> {
                     double maxSeconds = newLength / 1000.0;
                     if (maxSeconds > 0) {
                         progressSlider.setMax(maxSeconds);
                     }
+                });
+            }
+        });
+
+        videoPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+            @Override
+            public void finished(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer) {
+                Platform.runLater(() -> {
+                    videoPlayer.controls().stop();
+                    coverImageView.setImage(null);
+                    updateCoverImage(currentSongLabel.getText());
                 });
             }
         });
@@ -146,6 +159,8 @@ public class UIController {
         coverImageView.setFitWidth(170);
         coverImageView.setFitHeight(170);
         coverImageView.setPreserveRatio(true);
+
+        videoPlayer.videoSurface().set(new ImageViewVideoSurface(coverImageView));
 
         searchManager = new SearchManager(musicManager);
     }
@@ -205,7 +220,7 @@ public class UIController {
         }
 
         volumeSlider.setValue(configManager.getVolume() * 100);
-        mediaPlayer.audio().setVolume((int) volumeSlider.getValue());
+        audioPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         Button chooseFolderButton = new Button("Abrir carpeta Songs");
 
@@ -253,36 +268,54 @@ public class UIController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
-<<<<<<< HEAD
-
+        
                     if (empty || item == null) {
                         setContextMenu(null);
                         return;
                     }
-
+        
                     ContextMenu contextMenu = new ContextMenu();
-
-                    MenuItem toggleFavoriteItem = new MenuItem(
-                            favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos"
-                    );
-                    toggleFavoriteItem.setOnAction(e -> {
-                        if (favoritos.contains(item)) favoritos.remove(item);
-                        else favoritos.add(item);
-                        playlists.put("Favoritos", new ArrayList<>(favoritos));
-                        configManager.setFavorites(new ArrayList<>(favoritos));
-                        updatePlaylistListViewItems();
-                        if (currentPlaylist.equals("Favoritos")) loadPlaylistSongs("Favoritos");
-                        updateFavoriteButton(currentSongLabel.getText());
-                        songListView.refresh();
-                    });
-                    contextMenu.getItems().add(toggleFavoriteItem);
-
-                    if (!playlists.isEmpty()) {
-                        Menu addToPlaylistMenu = new Menu("Añadir a playlist");
+        
+                    Menu addToPlaylistMenu = new Menu("Añadir a playlist");
+        
+                    // Construimos el submenú solo al mostrarlo para que se actualice dinámicamente
+                    contextMenu.setOnShowing(event -> {
+                        addToPlaylistMenu.getItems().clear();
+        
+                        // Añadir Favoritos
+                        MenuItem favItem = new MenuItem("Favoritos");
+                        favItem.setOnAction(e -> {
+                            if (!favoritos.contains(item)) {
+                                favoritos.add(item);
+                                playlists.put("Favoritos", new ArrayList<>(favoritos));
+                                configManager.setFavorites(new ArrayList<>(favoritos));
+                                if (currentPlaylist.equals("Favoritos")) loadPlaylistSongs("Favoritos");
+                                updateFavoriteButton(currentSongLabel.getText());
+                                songListView.refresh();
+                            }
+                        });
+                        addToPlaylistMenu.getItems().add(favItem);
+        
+                        // Añadir Historial
+                        MenuItem historyItem = new MenuItem("Historial");
+                        historyItem.setOnAction(e -> {
+                            List<String> historial = playlists.get("Historial");
+                            if (historial == null) historial = new ArrayList<>();
+                            if (!historial.contains(item)) {
+                                historial.add(0, item);
+                                playlists.put("Historial", historial);
+                                musicManager.addToHistory(item);
+                                configManager.setPlaylists(playlists);
+                                if (currentPlaylist.equals("Historial")) loadPlaylistSongs("Historial");
+                            }
+                        });
+                        addToPlaylistMenu.getItems().add(historyItem);
+        
+                        // Añadir otras playlists (excluyendo Todo, Favoritos e Historial)
                         for (String playlistName : playlists.keySet()) {
                             if (!playlistName.equals("Todo") && !playlistName.equals("Favoritos") && !playlistName.equals("Historial")) {
                                 MenuItem playlistItem = new MenuItem(playlistName);
-                                playlistItem.setOnAction(e -> {
+                                playlistItem.setOnAction(ev -> {
                                     List<String> list = playlists.get(playlistName);
                                     if (list != null && !list.contains(item)) {
                                         list.add(item);
@@ -293,75 +326,20 @@ public class UIController {
                                 addToPlaylistMenu.getItems().add(playlistItem);
                             }
                         }
-                        contextMenu.getItems().add(addToPlaylistMenu);
-                    }
-
+                    });
+        
+                    contextMenu.getItems().add(addToPlaylistMenu);
+        
                     MenuItem exportSongItem = new MenuItem("Exportar canción");
                     exportSongItem.setOnAction(e -> exportManager.exportSong(item));
                     contextMenu.getItems().add(exportSongItem);
-
+        
                     setContextMenu(contextMenu);
                 }
             };
-=======
-                    if (empty || item == null) {
-                        setContextMenu(null);
-                    }
-                }
-            };
-
-            cell.setOnContextMenuRequested(event -> {
-                String item = cell.getItem();
-                if (item == null || cell.isEmpty()) {
-                    cell.setContextMenu(null);
-                    return;
-                }
-
-                ContextMenu contextMenu = new ContextMenu();
-
-                MenuItem toggleFavoriteItem = new MenuItem(
-                        favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos"
-                );
-                toggleFavoriteItem.setOnAction(e -> {
-                    if (favoritos.contains(item)) favoritos.remove(item);
-                    else favoritos.add(item);
-                    playlists.put("Favoritos", new ArrayList<>(favoritos));
-                    configManager.setFavorites(new ArrayList<>(favoritos));
-                    updatePlaylistListViewItems();
-                    if (currentPlaylist.equals("Favoritos")) loadPlaylistSongs("Favoritos");
-                    updateFavoriteButton(currentSongLabel.getText());
-                    songListView.refresh();
-                });
-                contextMenu.getItems().add(toggleFavoriteItem);
-
-                if (!playlists.isEmpty()) {
-                    Menu addToPlaylistMenu = new Menu("Añadir a playlist");
-                    for (String playlistName : playlists.keySet()) {
-                        MenuItem playlistItem = new MenuItem(playlistName);
-                        playlistItem.setOnAction(e -> {
-                            List<String> list = playlists.get(playlistName);
-                            if (list != null && !list.contains(item)) {
-                                list.add(item);
-                                configManager.setPlaylists(playlists);
-                                if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
-                            }
-                        });
-                        addToPlaylistMenu.getItems().add(playlistItem);
-                    }
-                    contextMenu.getItems().add(addToPlaylistMenu);
-                }
-
-                MenuItem exportSongItem = new MenuItem("Exportar canción");
-                exportSongItem.setOnAction(e -> exportManager.exportSong(item));
-                contextMenu.getItems().add(exportSongItem);
-
-                cell.setContextMenu(null);
-                cell.setContextMenu(contextMenu);
-            });
-
->>>>>>> 5654819 (Corregido un bug para añadir canciones a las playlists)
             return cell;
         });
+        
 
         songListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
@@ -425,15 +403,17 @@ public class UIController {
         progressSlider.setValue(0);
         progressSlider.setOnMousePressed(e -> isSeeking = true);
         progressSlider.setOnMouseReleased(e -> {
-            State state = mediaPlayer.status().state();
+            State state = audioPlayer.status().state();
             if (state == State.PLAYING || state == State.PAUSED) {
-                mediaPlayer.controls().setTime((long) (progressSlider.getValue() * 1000));
+                long time = (long) (progressSlider.getValue() * 1000);
+                audioPlayer.controls().setTime(time);
+                videoPlayer.controls().setTime(time);
             }
             isSeeking = false;
         });
 
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            mediaPlayer.audio().setVolume(newVal.intValue());
+            audioPlayer.audio().setVolume(newVal.intValue());
             configManager.setVolume(newVal.doubleValue() / 100.0);
         });
 
@@ -528,10 +508,10 @@ public class UIController {
 
                 String path = musicManager.getSongPath(lastSong);
                 if (path != null) {
-                    mediaPlayer.media().prepare(path);
+                    audioPlayer.media().prepare(path);
                     long duration = 0;
-                    if (mediaPlayer.media().info() != null) {
-                        duration = mediaPlayer.media().info().duration();
+                    if (audioPlayer.media().info() != null) {
+                        duration = audioPlayer.media().info().duration();
                     }
                     progressSlider.setMax(duration > 0 ? duration / 1000.0 : 0);
                 }
@@ -568,13 +548,15 @@ public class UIController {
     }
 
     private void togglePlayPause() {
-        State state = mediaPlayer.status().state();
-        if (null == state) {
-            mediaPlayer.controls().play();
+        State state = audioPlayer.status().state();
+        if (state == null) {
+            audioPlayer.controls().play();
+            videoPlayer.controls().pause();
             playPauseButton.setText("⏸");
         } else switch (state) {
             case PLAYING -> {
-                mediaPlayer.controls().pause();
+                audioPlayer.controls().pause();
+                videoPlayer.controls().pause();
                 playPauseButton.setText("▶");
             }
             case STOPPED -> {
@@ -582,14 +564,16 @@ public class UIController {
                 playPauseButton.setText("⏸");
             }
             default -> {
-                mediaPlayer.controls().play();
+                audioPlayer.controls().play();
+                videoPlayer.controls().pause();
                 playPauseButton.setText("⏸");
             }
         }
     }
 
     private void stopPlayback() {
-        mediaPlayer.controls().stop();
+        audioPlayer.controls().stop();
+        videoPlayer.controls().stop();
         playPauseButton.setText("▶");
         progressSlider.setValue(0);
     }
@@ -605,15 +589,25 @@ public class UIController {
         String songPath = musicManager.getSongPath(songName);
         if (songPath == null) return;
 
-        mediaPlayer.media().play(songPath);
+        audioPlayer.controls().stop();
+        videoPlayer.controls().stop();
+
+        String videoPath = musicManager.getVideoPath(songName);
+        if (videoPath != null && !videoPath.isEmpty() && new File(videoPath).exists()) {
+            videoPlayer.media().play(videoPath, ":no-audio");
+        } else {
+            videoPlayer.controls().stop();
+        }
+
+        audioPlayer.media().play(songPath);
 
         currentSongLabel.setText(songName);
         updateFavoriteButton(songName);
         updateCoverImage(songName);
 
         long duration = 0;
-        if (mediaPlayer.media().info() != null) {
-            duration = mediaPlayer.media().info().duration();
+        if (audioPlayer.media().info() != null) {
+            duration = audioPlayer.media().info().duration();
         }
         progressSlider.setMax(duration > 0 ? duration / 1000.0 : 0);
 
@@ -733,7 +727,6 @@ public class UIController {
         Map<String, String> loadedSongs = musicManager.loadSongsFromFolder(folder);
         playlists.put("Todo", new ArrayList<>(loadedSongs.keySet()));
 
-        // Filtrar otras playlists eliminando canciones que no estén en la carpeta actual
         for (Map.Entry<String, List<String>> entry : playlists.entrySet()) {
             String key = entry.getKey();
             if (!key.equals("Todo") && !key.equals("Favoritos") && !key.equals("Historial")) {
@@ -754,7 +747,11 @@ public class UIController {
 
     private void updateCoverImage(String songName) {
         Image coverImage = coverManager.getCoverImage(songName);
-        coverImageView.setImage(coverImage != null ? coverImage : null);
+        if (coverImage != null) {
+            coverImageView.setImage(coverImage);
+        } else {
+            coverImageView.setImage(null);
+        }
     }
 
     private void createNewPlaylist() {
@@ -777,10 +774,6 @@ public class UIController {
                 playlists.put(trimmedName, new ArrayList<>());
                 configManager.setPlaylists(playlists);
                 updatePlaylistListViewItems();
-<<<<<<< HEAD
-=======
-                songListView.refresh();
->>>>>>> 5654819 (Corregido un bug para añadir canciones a las playlists)
             }
         });
     }

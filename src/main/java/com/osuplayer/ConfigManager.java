@@ -25,7 +25,6 @@ public class ConfigManager {
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
             props.load(input);
         } catch (IOException e) {
-            // Archivo puede no existir la primera vez, no pasa nada
         }
     }
 
@@ -33,11 +32,9 @@ public class ConfigManager {
         try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
             props.store(output, "Configuración de OSU! Music Player");
         } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
-    // --- VOLUMEN ---
     public double getVolume() {
         String v = props.getProperty("volume", "0.5");
         try {
@@ -52,7 +49,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- ÚLTIMA CARPETA ---
     public String getLastFolder() {
         return props.getProperty("lastFolder", "");
     }
@@ -62,7 +58,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- FAVORITOS ---
     public List<String> getFavorites() {
         String favs = props.getProperty("favorites", "");
         if (favs.isEmpty()) return new ArrayList<>();
@@ -75,7 +70,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- PLAYLISTS ---
     public Map<String, List<String>> getPlaylists() {
         Map<String, List<String>> playlists = new HashMap<>();
         for (String key : props.stringPropertyNames()) {
@@ -93,7 +87,6 @@ public class ConfigManager {
     }
 
     public void setPlaylists(Map<String, List<String>> playlists) {
-        // Primero, eliminar todas las claves que empiecen por playlist.
         List<String> keysToRemove = new ArrayList<>();
         for (String key : props.stringPropertyNames()) {
             if (key.startsWith("playlist.")) {
@@ -103,7 +96,6 @@ public class ConfigManager {
         for (String key : keysToRemove) {
             props.remove(key);
         }
-        // Guardar las playlists nuevas
         for (Map.Entry<String, List<String>> entry : playlists.entrySet()) {
             String key = "playlist." + entry.getKey();
             String value = String.join(",", entry.getValue());
@@ -112,7 +104,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- CANCIÓN ACTUAL ---
     public String getCurrentSong() {
         return props.getProperty("currentSong", "");
     }
@@ -132,7 +123,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- ÚLTIMA CANCIÓN REPRODUCIDA ---
     public String getLastSong() {
         return props.getProperty("lastSong", "");
     }
@@ -142,7 +132,6 @@ public class ConfigManager {
         saveProperties();
     }
 
-    // --- HISTORIAL DE REPRODUCCIÓN ---
     public void setPlayHistory(List<String> history) {
         String joined = String.join(";", history);
         props.setProperty("playHistory", joined);
@@ -166,5 +155,9 @@ public class ConfigManager {
         } catch (NumberFormatException e) {
             return -1;
         }
+    }
+
+    public String getSongsDirectory() {
+        return props.getProperty("songsDirectory", "");
     }
 }
