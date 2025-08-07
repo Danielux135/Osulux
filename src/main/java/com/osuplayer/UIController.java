@@ -253,6 +253,7 @@ public class UIController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
+<<<<<<< HEAD
 
                     if (empty || item == null) {
                         setContextMenu(null);
@@ -302,6 +303,63 @@ public class UIController {
                     setContextMenu(contextMenu);
                 }
             };
+=======
+                    if (empty || item == null) {
+                        setContextMenu(null);
+                    }
+                }
+            };
+
+            cell.setOnContextMenuRequested(event -> {
+                String item = cell.getItem();
+                if (item == null || cell.isEmpty()) {
+                    cell.setContextMenu(null);
+                    return;
+                }
+
+                ContextMenu contextMenu = new ContextMenu();
+
+                MenuItem toggleFavoriteItem = new MenuItem(
+                        favoritos.contains(item) ? "Eliminar de favoritos" : "Agregar a favoritos"
+                );
+                toggleFavoriteItem.setOnAction(e -> {
+                    if (favoritos.contains(item)) favoritos.remove(item);
+                    else favoritos.add(item);
+                    playlists.put("Favoritos", new ArrayList<>(favoritos));
+                    configManager.setFavorites(new ArrayList<>(favoritos));
+                    updatePlaylistListViewItems();
+                    if (currentPlaylist.equals("Favoritos")) loadPlaylistSongs("Favoritos");
+                    updateFavoriteButton(currentSongLabel.getText());
+                    songListView.refresh();
+                });
+                contextMenu.getItems().add(toggleFavoriteItem);
+
+                if (!playlists.isEmpty()) {
+                    Menu addToPlaylistMenu = new Menu("Añadir a playlist");
+                    for (String playlistName : playlists.keySet()) {
+                        MenuItem playlistItem = new MenuItem(playlistName);
+                        playlistItem.setOnAction(e -> {
+                            List<String> list = playlists.get(playlistName);
+                            if (list != null && !list.contains(item)) {
+                                list.add(item);
+                                configManager.setPlaylists(playlists);
+                                if (playlistName.equals(currentPlaylist)) loadPlaylistSongs(playlistName);
+                            }
+                        });
+                        addToPlaylistMenu.getItems().add(playlistItem);
+                    }
+                    contextMenu.getItems().add(addToPlaylistMenu);
+                }
+
+                MenuItem exportSongItem = new MenuItem("Exportar canción");
+                exportSongItem.setOnAction(e -> exportManager.exportSong(item));
+                contextMenu.getItems().add(exportSongItem);
+
+                cell.setContextMenu(null);
+                cell.setContextMenu(contextMenu);
+            });
+
+>>>>>>> 5654819 (Corregido un bug para añadir canciones a las playlists)
             return cell;
         });
 
@@ -719,6 +777,10 @@ public class UIController {
                 playlists.put(trimmedName, new ArrayList<>());
                 configManager.setPlaylists(playlists);
                 updatePlaylistListViewItems();
+<<<<<<< HEAD
+=======
+                songListView.refresh();
+>>>>>>> 5654819 (Corregido un bug para añadir canciones a las playlists)
             }
         });
     }
