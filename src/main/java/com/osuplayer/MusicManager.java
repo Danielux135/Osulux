@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javafx.scene.image.Image;
+
 public class MusicManager {
 
     private final Map<String, String> songs = new LinkedHashMap<>();
@@ -122,13 +124,34 @@ public class MusicManager {
     public String getVideoPath(String songName) {
         String baseFolder = getSongBaseFolder(songName);
         if (baseFolder == null) return null;
-    
+
         File folder = new File(baseFolder);
         File[] videoFiles = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".mp4"));
         if (videoFiles != null && videoFiles.length > 0) {
             return videoFiles[0].getAbsolutePath();
         }
-    
+
+        return null;
+    }
+
+    /**
+     * Nuevo método para obtener la imagen del storyboard si existe.
+     * Busca un archivo "storyboard.png" en la carpeta base de la canción.
+     * Puedes cambiar la lógica o el nombre del archivo según tu implementación.
+     */
+    public Image getStoryboardImage(String songName) {
+        String baseFolder = getSongBaseFolder(songName);
+        if (baseFolder == null) return null;
+
+        File storyboardFile = new File(baseFolder, "storyboard.png");
+        if (storyboardFile.exists()) {
+            try {
+                return new Image(storyboardFile.toURI().toString());
+            } catch (Exception e) {
+                System.err.println("Error cargando storyboard para " + songName + ": " + e.getMessage());
+                return null;
+            }
+        }
         return null;
     }
 

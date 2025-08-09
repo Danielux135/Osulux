@@ -160,4 +160,32 @@ public class ConfigManager {
     public String getSongsDirectory() {
         return props.getProperty("songsDirectory", "");
     }
+
+    public double getWindowWidth() {
+        String w = props.getProperty("window.width", "1200");
+        try {
+            return Double.parseDouble(w);
+        } catch (NumberFormatException e) {
+            return 1200;
+        }
+    }
+
+    public void setWindowWidth(double width) {
+        props.setProperty("window.width", Double.toString(width));
+        saveProperties();
+    }
+
+    public double getWindowHeight() {
+        String h = props.getProperty("window.height", "720");
+        try {
+            return Double.parseDouble(h);
+        } catch (NumberFormatException e) {
+            return 720;
+        }
+    }
+
+    public void setWindowHeight(double height) {
+        props.setProperty("window.height", Double.toString(height));
+        saveProperties();
+    }
 }

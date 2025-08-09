@@ -15,7 +15,7 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        factory = new MediaPlayerFactory();
+        factory = new MediaPlayerFactory("--input-title-format=Osulux");
         audioPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer();
         videoPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer();
 

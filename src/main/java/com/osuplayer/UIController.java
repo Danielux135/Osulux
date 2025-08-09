@@ -28,6 +28,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
@@ -35,6 +36,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -75,6 +78,9 @@ public class UIController {
     private Button newPlaylistButton;
 
     private final ImageView coverImageView = new ImageView();
+    private final ImageView videoImageView = new ImageView();
+
+    private StackPane mediaDisplayStack;
 
     private String currentPlaylist = "Todo";
 
@@ -84,6 +90,13 @@ public class UIController {
     private final CoverManager coverManager;
 
     private final SearchManager searchManager;
+
+    private static final double MIN_PLAYLIST_WIDTH = 180;
+    private static final double MIN_SONGS_WIDTH = 400;
+    private static final double MIN_RIGHT_PANEL_WIDTH = 170;
+
+    private double lastDivider0 = 0.15;
+    private double lastDivider1 = 0.75;
 
     public UIController(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, MusicManager musicManager) {
         this.audioPlayer = audioPlayer;
@@ -146,21 +159,34 @@ public class UIController {
             public void finished(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer) {
                 Platform.runLater(() -> {
                     videoPlayer.controls().stop();
-                    coverImageView.setImage(null);
+                    hideVideo();
                     updateCoverImage(currentSongLabel.getText());
                 });
             }
         });
 
-        favoriteButton.setStyle("-fx-font-size: 24;");
+        favoriteButton.setStyle("-fx-font-size: 28px; -fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #ff69b4;");
         favoriteButton.setFocusTraversable(false);
         favoriteButton.setOnAction(e -> toggleFavorito());
 
-        coverImageView.setFitWidth(170);
-        coverImageView.setFitHeight(170);
         coverImageView.setPreserveRatio(true);
+        coverImageView.setSmooth(true);
+        coverImageView.setCache(true);
 
-        videoPlayer.videoSurface().set(new ImageViewVideoSurface(coverImageView));
+        videoImageView.setPreserveRatio(true);
+        videoImageView.setSmooth(true);
+        videoImageView.setCache(true);
+
+        videoPlayer.videoSurface().set(new ImageViewVideoSurface(videoImageView));
+
+        mediaDisplayStack = new StackPane();
+        mediaDisplayStack.getChildren().addAll(coverImageView, videoImageView);
+        mediaDisplayStack.setMaxWidth(Double.MAX_VALUE);
+        mediaDisplayStack.setMinWidth(100);
+        mediaDisplayStack.setMinHeight(100);
+
+        coverImageView.setVisible(true);
+        videoImageView.setVisible(false);
 
         searchManager = new SearchManager(musicManager);
     }
@@ -215,18 +241,29 @@ public class UIController {
                 Image icon = new Image(iconStream);
                 primaryStage.getIcons().add(icon);
             }
-        } catch (Exception e) {
-            System.err.println("Error cargando icono: " + e.getMessage());
-        }
+        } catch (Exception e) {}
 
         volumeSlider.setValue(configManager.getVolume() * 100);
         audioPlayer.audio().setVolume((int) volumeSlider.getValue());
 
         Button chooseFolderButton = new Button("Abrir carpeta Songs");
+        chooseFolderButton.setMaxWidth(Double.MAX_VALUE);
 
         searchField = new TextField();
         searchField.setPromptText("Buscar canciones, artistas, creadores o tags...");
-        searchField.setPrefWidth(600);
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (filteredSongList == null) return;
+            String lower = newVal == null ? "" : newVal.toLowerCase().trim();
+            if (lower.isEmpty()) {
+                filteredSongList.setPredicate(s -> true);
+            } else {
+                filteredSongList.setPredicate(song -> {
+                    if (song == null) return false;
+                    return searchManager.matchesQuery(song, lower);
+                });
+            }
+        });
 
         Button previousButton = createControlButton("⏮");
         playPauseButton = createControlButton("▶");
@@ -268,21 +305,19 @@ public class UIController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
-        
+
                     if (empty || item == null) {
                         setContextMenu(null);
                         return;
                     }
-        
+
                     ContextMenu contextMenu = new ContextMenu();
-        
+
                     Menu addToPlaylistMenu = new Menu("Añadir a playlist");
-        
-                    // Construimos el submenú solo al mostrarlo para que se actualice dinámicamente
+
                     contextMenu.setOnShowing(event -> {
                         addToPlaylistMenu.getItems().clear();
-        
-                        // Añadir Favoritos
+
                         MenuItem favItem = new MenuItem("Favoritos");
                         favItem.setOnAction(e -> {
                             if (!favoritos.contains(item)) {
@@ -295,8 +330,7 @@ public class UIController {
                             }
                         });
                         addToPlaylistMenu.getItems().add(favItem);
-        
-                        // Añadir Historial
+
                         MenuItem historyItem = new MenuItem("Historial");
                         historyItem.setOnAction(e -> {
                             List<String> historial = playlists.get("Historial");
@@ -310,8 +344,7 @@ public class UIController {
                             }
                         });
                         addToPlaylistMenu.getItems().add(historyItem);
-        
-                        // Añadir otras playlists (excluyendo Todo, Favoritos e Historial)
+
                         for (String playlistName : playlists.keySet()) {
                             if (!playlistName.equals("Todo") && !playlistName.equals("Favoritos") && !playlistName.equals("Historial")) {
                                 MenuItem playlistItem = new MenuItem(playlistName);
@@ -327,19 +360,18 @@ public class UIController {
                             }
                         }
                     });
-        
+
                     contextMenu.getItems().add(addToPlaylistMenu);
-        
+
                     MenuItem exportSongItem = new MenuItem("Exportar canción");
                     exportSongItem.setOnAction(e -> exportManager.exportSong(item));
                     contextMenu.getItems().add(exportSongItem);
-        
+
                     setContextMenu(contextMenu);
                 }
             };
             return cell;
         });
-        
 
         songListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
@@ -416,59 +448,115 @@ public class UIController {
             audioPlayer.audio().setVolume(newVal.intValue());
             configManager.setVolume(newVal.doubleValue() / 100.0);
         });
-
         currentSongLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-        currentSongLabel.setMaxWidth(170);
         currentSongLabel.setWrapText(true);
         currentSongLabel.setAlignment(Pos.CENTER);
 
-        VBox coverBox = new VBox(5, coverImageView, currentSongLabel, favoriteButton);
-        coverBox.setAlignment(Pos.CENTER);
-        coverBox.setPrefWidth(170);
+        VBox coverBox = new VBox(10);
+        coverBox.setAlignment(Pos.TOP_CENTER);
+
+        StackPane.setAlignment(mediaDisplayStack, Pos.CENTER);
+        coverBox.getChildren().add(mediaDisplayStack);
+
+        VBox titleFavoriteBox = new VBox(5);
+        titleFavoriteBox.setAlignment(Pos.CENTER);
+        titleFavoriteBox.getChildren().addAll(currentSongLabel, favoriteButton);
+        coverBox.getChildren().add(titleFavoriteBox);
+
+        coverBox.setPadding(new Insets(10));
+        VBox.setVgrow(mediaDisplayStack, Priority.ALWAYS);
 
         HBox controlBox = new HBox(10, previousButton, playPauseButton, stopButton, nextButton, shuffleButton, volumeSlider);
         controlBox.setAlignment(Pos.CENTER);
+        controlBox.setPadding(new Insets(5, 10, 5, 10));
 
         HBox progressBox = new HBox(10, progressSlider, timeLabel);
         progressBox.setAlignment(Pos.CENTER);
+        progressBox.setPadding(new Insets(0, 10, 5, 10));
+        HBox.setHgrow(progressSlider, Priority.ALWAYS);
 
         newPlaylistButton = new Button("Nueva Playlist");
+        newPlaylistButton.setMaxWidth(Double.MAX_VALUE);
+        newPlaylistButton.setFocusTraversable(false);
         newPlaylistButton.setOnAction(e -> createNewPlaylist());
 
-        VBox playlistBox = new VBox(5);
-        playlistBox.setPrefWidth(170);
-        playlistBox.getChildren().addAll(playlistListView);
-        HBox newPlaylistButtonBox = new HBox(newPlaylistButton);
-        newPlaylistButtonBox.setAlignment(Pos.CENTER);
-        playlistBox.getChildren().add(newPlaylistButtonBox);
+        VBox playlistBox = new VBox(5, playlistListView, newPlaylistButton);
+        playlistBox.setPadding(new Insets(10));
+        playlistBox.setMinWidth(MIN_PLAYLIST_WIDTH);
+        playlistBox.setPrefWidth(MIN_PLAYLIST_WIDTH);
+        playlistBox.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(playlistListView, Priority.ALWAYS);
 
-        HBox topLeftBox = new HBox(chooseFolderButton);
-        topLeftBox.setAlignment(Pos.CENTER_LEFT);
-        topLeftBox.setPrefWidth(170);
+        VBox songListContainer = new VBox(songListView);
+        songListContainer.setPadding(new Insets(10));
+        songListContainer.setMinWidth(MIN_SONGS_WIDTH);
+        songListContainer.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(songListView, Priority.ALWAYS);
 
-        HBox searchBox = new HBox(searchField);
-        searchBox.setAlignment(Pos.CENTER);
-        searchBox.setPrefWidth(600);
+        VBox mediaContainer = new VBox(coverBox);
+        mediaContainer.setPadding(new Insets(10));
+        mediaContainer.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(coverBox, Priority.ALWAYS);
 
-        HBox topBox = new HBox(10, topLeftBox, searchBox);
-        topBox.setAlignment(Pos.CENTER_LEFT);
-        BorderPane.setMargin(topBox, new Insets(10));
+        SplitPane splitPane = new SplitPane(playlistBox, songListContainer, mediaContainer);
+        splitPane.setDividerPositions(lastDivider0, lastDivider1);
 
-        BorderPane root = new BorderPane();
-        root.setTop(topBox);
-        root.setCenter(songListView);
-        root.setRight(coverBox);
-        root.setBottom(new VBox(5, controlBox, progressBox));
-        root.setLeft(playlistBox);
+        splitPane.getDividers().get(0).positionProperty().addListener((obs, oldVal, newVal) -> {
+            if (!splitPane.isPressed()) return;
+            double pos = newVal.doubleValue();
 
-        Scene scene = new Scene(root, 900, 500);
-        primaryStage.setScene(scene);
-        primaryStage.show();
+            if (pos < 0.05) pos = 0.05;
+            if (pos > 0.4) pos = 0.4;
 
-        filteredSongList = new FilteredList<>(masterSongList, s -> true);
-        songListView.setItems(filteredSongList);
+            lastDivider0 = pos;
 
-        searchManager.attachSearchField(searchField, filteredSongList);
+            double totalWidth = splitPane.getWidth();
+            double songListWidth = totalWidth * (lastDivider1 - lastDivider0);
+            if (songListWidth < MIN_SONGS_WIDTH) {
+                lastDivider1 = lastDivider0 + MIN_SONGS_WIDTH / totalWidth;
+                if (lastDivider1 > 0.85) lastDivider1 = 0.85;
+            }
+
+            splitPane.setDividerPositions(lastDivider0, lastDivider1);
+
+            Platform.runLater(() -> updateMediaDisplaySize(totalWidth * (1 - lastDivider1), splitPane.getHeight()));
+        });
+
+        splitPane.getDividers().get(1).positionProperty().addListener((obs, oldVal, newVal) -> {
+            if (!splitPane.isPressed()) return;
+            double pos = newVal.doubleValue();
+
+            if (pos < 0.5) pos = 0.5;
+            if (pos > 0.85) pos = 0.85;
+
+            lastDivider1 = pos;
+
+            double totalWidth = splitPane.getWidth();
+            double rightPanelWidth = totalWidth * (1 - lastDivider1);
+            if (rightPanelWidth < MIN_RIGHT_PANEL_WIDTH) {
+                lastDivider1 = 1 - (MIN_RIGHT_PANEL_WIDTH / totalWidth);
+                if (lastDivider1 < 0.5) lastDivider1 = 0.5;
+            }
+
+            splitPane.setDividerPositions(lastDivider0, lastDivider1);
+
+            Platform.runLater(() -> updateMediaDisplaySize(totalWidth * (1 - lastDivider1), splitPane.getHeight()));
+        });
+
+        splitPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+            Platform.runLater(() -> updateMediaDisplaySize(newVal.doubleValue() * (1 - lastDivider1), splitPane.getHeight()));
+        });
+
+        splitPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+            Platform.runLater(() -> updateMediaDisplaySize(splitPane.getWidth() * (1 - lastDivider1), newVal.doubleValue()));
+        });
+
+        playlistListView.setPrefHeight(600);
+        playlistListView.setMaxHeight(Double.MAX_VALUE);
+        playlistListView.setMinHeight(100);
+
+        songListView.prefHeightProperty().bind(splitPane.heightProperty().subtract(20));
+        songListView.setMaxHeight(Double.MAX_VALUE);
 
         String lastFolder = configManager.getLastFolder();
         if (lastFolder != null && !lastFolder.isEmpty()) {
@@ -485,17 +573,94 @@ public class UIController {
         if (lastSong != null && !lastSong.isEmpty()) {
             selectAndPreloadLastSong(lastSong);
         }
+
+        HBox topBox = new HBox(10, chooseFolderButton, searchField);
+        topBox.setPadding(new Insets(10));
+        topBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+
+        BorderPane root = new BorderPane();
+        root.setTop(topBox);
+        root.setCenter(splitPane);
+        VBox bottomBox = new VBox(controlBox, progressBox);
+        root.setBottom(bottomBox);
+
+        Scene scene = new Scene(root, 1200, 720);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        Platform.runLater(() -> updateMediaDisplaySize(splitPane.getWidth() * (1 - lastDivider1), splitPane.getHeight()));
+    }
+
+    private void updateMediaDisplaySize(double rightWidth, double totalHeight) {
+        if (rightWidth <= 0 || totalHeight <= 0) return;
+
+        double availableWidth = Math.max(1, rightWidth * 0.98);
+        double availableHeight = Math.max(1, totalHeight * 0.92);
+
+        Image img = null;
+        boolean isVideoVisible = videoImageView.isVisible();
+
+        if (isVideoVisible) {
+            img = videoImageView.getImage();
+        } else {
+            img = coverImageView.getImage();
+        }
+
+        if (img == null) {
+            coverImageView.setFitWidth(availableWidth);
+            coverImageView.setFitHeight(availableHeight);
+            videoImageView.setFitWidth(availableWidth);
+            videoImageView.setFitHeight(availableHeight);
+            StackPane.setAlignment(mediaDisplayStack, Pos.CENTER);
+            mediaDisplayStack.setPrefSize(availableWidth, availableHeight + 120);
+            return;
+        }
+
+        double imgW = img.getWidth();
+        double imgH = img.getHeight();
+        if (imgW <= 0 || imgH <= 0) {
+            coverImageView.setFitWidth(availableWidth);
+            coverImageView.setFitHeight(availableHeight);
+            videoImageView.setFitWidth(availableWidth);
+            videoImageView.setFitHeight(availableHeight);
+            StackPane.setAlignment(mediaDisplayStack, Pos.CENTER);
+            mediaDisplayStack.setPrefSize(availableWidth, availableHeight + 120);
+            return;
+        }
+
+        double ratio = imgW / imgH;
+
+        double width = availableWidth;
+        double height = availableWidth / ratio;
+
+        if (height > availableHeight) {
+            height = availableHeight;
+            width = height * ratio;
+        }
+
+        if (width <= 0 || height <= 0) {
+            width = availableWidth;
+            height = Math.min(availableHeight, availableWidth / Math.max(0.0001, ratio));
+        }
+
+        if (isVideoVisible) {
+            videoImageView.setFitWidth(width);
+            videoImageView.setFitHeight(height);
+            StackPane.setAlignment(videoImageView, Pos.CENTER);
+        } else {
+            coverImageView.setFitWidth(width);
+            coverImageView.setFitHeight(height);
+            StackPane.setAlignment(coverImageView, Pos.CENTER);
+        }
+
+        mediaDisplayStack.setPrefWidth(availableWidth);
+        mediaDisplayStack.setPrefHeight(height + 120);
     }
 
     private void selectAndPreloadLastSong(String lastSong) {
         if (lastSong == null || lastSong.isEmpty()) return;
-        int index = -1;
-        for (int i = 0; i < filteredSongList.size(); i++) {
-            if (filteredSongList.get(i).equals(lastSong)) {
-                index = i;
-                break;
-            }
-        }
+        int index = masterSongList.indexOf(lastSong);
         if (index >= 0) {
             final int idx = index;
             Platform.runLater(() -> {
@@ -535,7 +700,8 @@ public class UIController {
         if (songs == null) songs = Collections.emptyList();
         masterSongList.clear();
         masterSongList.addAll(songs);
-        filteredSongList.setPredicate(s -> true);
+        filteredSongList = new FilteredList<>(masterSongList, s -> true);
+        songListView.setItems(filteredSongList);
         scrollToCurrentSong();
     }
 
@@ -576,6 +742,20 @@ public class UIController {
         videoPlayer.controls().stop();
         playPauseButton.setText("▶");
         progressSlider.setValue(0);
+        hideVideo();
+
+        String currentSong = currentSongLabel.getText();
+        if (currentSong != null && !currentSong.isEmpty()) {
+            String path = musicManager.getSongPath(currentSong);
+            if (path != null) {
+                audioPlayer.media().prepare(path);
+                long duration = 0;
+                if (audioPlayer.media().info() != null) {
+                    duration = audioPlayer.media().info().duration();
+                }
+                progressSlider.setMax(duration > 0 ? duration / 1000.0 : 0);
+            }
+        }
     }
 
     private void playSelectedSong() {
@@ -595,8 +775,10 @@ public class UIController {
         String videoPath = musicManager.getVideoPath(songName);
         if (videoPath != null && !videoPath.isEmpty() && new File(videoPath).exists()) {
             videoPlayer.media().play(videoPath, ":no-audio");
+            showVideo();
         } else {
             videoPlayer.controls().stop();
+            hideVideo();
         }
 
         audioPlayer.media().play(songPath);
@@ -657,63 +839,36 @@ public class UIController {
     }
 
     private void playNextSong() {
-        if (filteredSongList.isEmpty()) return;
+        if (filteredSongList == null || filteredSongList.isEmpty()) return;
         if (shuffleEnabled) {
             int size = filteredSongList.size();
             int index = random.nextInt(size);
             playSong(filteredSongList.get(index), false);
         } else {
-            if (musicManager.hasNextInHistory()) {
-                String nextSong = musicManager.getNextFromHistory();
-                playSong(nextSong, true);
-                int index = filteredSongList.indexOf(nextSong);
-                if (index >= 0) {
-                    songListView.getSelectionModel().select(index);
-                    songListView.scrollTo(index);
-                }
-            } else {
-                int currentIndex = songListView.getSelectionModel().getSelectedIndex();
-                int nextIndex = (currentIndex + 1) % filteredSongList.size();
-                String nextSong = filteredSongList.get(nextIndex);
-                playSong(nextSong, false);
-                songListView.getSelectionModel().select(nextIndex);
-                songListView.scrollTo(nextIndex);
-            }
+            int currentIndex = songListView.getSelectionModel().getSelectedIndex();
+            int nextIndex = (currentIndex + 1) % filteredSongList.size();
+            String nextSong = filteredSongList.get(nextIndex);
+            playSong(nextSong, false);
+            songListView.getSelectionModel().select(nextIndex);
+            songListView.scrollTo(nextIndex);
         }
     }
 
     private void playPreviousSong() {
-        if (shuffleEnabled && musicManager.hasPreviousInHistory()) {
-            String previousSong = musicManager.getPreviousFromHistory();
-            playSong(previousSong, true);
-            int index = filteredSongList.indexOf(previousSong);
-            if (index >= 0) {
-                songListView.getSelectionModel().select(index);
-                songListView.scrollTo(index);
-            }
-        } else if (musicManager.hasPreviousInHistory()) {
-            String previousSong = musicManager.getPreviousFromHistory();
-            playSong(previousSong, true);
-            int index = filteredSongList.indexOf(previousSong);
-            if (index >= 0) {
-                songListView.getSelectionModel().select(index);
-                songListView.scrollTo(index);
-            }
-        } else {
-            int currentIndex = songListView.getSelectionModel().getSelectedIndex();
-            int prevIndex = currentIndex - 1;
-            if (prevIndex < 0) prevIndex = filteredSongList.size() - 1;
-            String prevSong = filteredSongList.get(prevIndex);
-            playSong(prevSong, false);
-            songListView.getSelectionModel().select(prevIndex);
-            songListView.scrollTo(prevIndex);
-        }
+        if (filteredSongList == null || filteredSongList.isEmpty()) return;
+        int currentIndex = songListView.getSelectionModel().getSelectedIndex();
+        int prevIndex = currentIndex - 1;
+        if (prevIndex < 0) prevIndex = filteredSongList.size() - 1;
+        String prevSong = filteredSongList.get(prevIndex);
+        playSong(prevSong, false);
+        songListView.getSelectionModel().select(prevIndex);
+        songListView.scrollTo(prevIndex);
     }
 
     private void scrollToCurrentSong() {
         Platform.runLater(() -> {
             String currentSong = currentSongLabel.getText();
-            if (currentSong != null) {
+            if (currentSong != null && filteredSongList != null) {
                 int index = filteredSongList.indexOf(currentSong);
                 if (index >= 0) {
                     songListView.scrollTo(index);
@@ -784,5 +939,15 @@ public class UIController {
         int totalMin = (int) (totalSeconds / 60);
         int totalSec = (int) (totalSeconds % 60);
         timeLabel.setText(String.format("%02d:%02d / %02d:%02d", currentMin, currentSec, totalMin, totalSec));
+    }
+
+    private void showVideo() {
+        videoImageView.setVisible(true);
+        coverImageView.setVisible(false);
+    }
+
+    private void hideVideo() {
+        videoImageView.setVisible(false);
+        coverImageView.setVisible(true);
     }
 }
