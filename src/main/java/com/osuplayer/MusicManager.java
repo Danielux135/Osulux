@@ -134,11 +134,6 @@ public class MusicManager {
         return null;
     }
 
-    /**
-     * Nuevo método para obtener la imagen del storyboard si existe.
-     * Busca un archivo "storyboard.png" en la carpeta base de la canción.
-     * Puedes cambiar la lógica o el nombre del archivo según tu implementación.
-     */
     public Image getStoryboardImage(String songName) {
         String baseFolder = getSongBaseFolder(songName);
         if (baseFolder == null) return null;
@@ -272,6 +267,8 @@ public class MusicManager {
         }
         return results;
     }
+
+    // Métodos de historial que delegan al HistoryManager
 
     public void addToHistory(String songName) {
         historyManager.addSong(songName);

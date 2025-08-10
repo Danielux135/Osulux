@@ -19,7 +19,6 @@ public class CoverManager {
         if (coverPath != null) {
             File coverFile = new File(coverPath);
             if (coverFile.exists()) {
-                // Carga la imagen en tamaño original, con preservación de ratio y suavizado
                 return new Image(coverFile.toURI().toString(), 0, 0, true, true);
             }
         }
@@ -29,7 +28,6 @@ public class CoverManager {
     public Image getDefaultCover() {
         try (InputStream is = getClass().getResourceAsStream("/default_cover.jpg")) {
             if (is != null) {
-                // Carga la imagen por defecto con preservación de ratio y suavizado
                 return new Image(is, 0, 0, true, true);
             }
         } catch (IOException e) {
