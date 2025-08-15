@@ -80,7 +80,7 @@ public class UIController {
     private final ImageView coverImageView = new ImageView();
     private final ImageView videoImageView = new ImageView();
 
-    private StackPane mediaDisplayStack;
+    private final StackPane mediaDisplayStack;
     private VBox mediaContainer;
 
     private String currentPlaylist = "Todo";
@@ -1036,7 +1036,6 @@ public class UIController {
             playlists.put(trimmedName, new ArrayList<>());
             configManager.setPlaylists(playlists);
             updatePlaylistListViewItems();
-            selectPlaylist(trimmedName);
         });
     }
 
