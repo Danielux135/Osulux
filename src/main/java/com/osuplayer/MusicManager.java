@@ -64,7 +64,7 @@ public class MusicManager {
     }
 
     public String getSongPath(String songName) {
-        return songs.get(songName);
+        return songs.getOrDefault(songName, null);
     }
 
     public void setLastFolderPath(String path) {
@@ -76,7 +76,7 @@ public class MusicManager {
     }
 
     public String getSongBaseFolder(String songName) {
-        return songBaseFolders.get(songName);
+        return songBaseFolders.getOrDefault(songName, null);
     }
 
     public String getCoverImagePath(String songName) {
@@ -85,38 +85,32 @@ public class MusicManager {
 
         File beatmapFolder = new File(baseFolder);
         File[] osuFiles = beatmapFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".osu"));
-        if (osuFiles == null || osuFiles.length == 0) return null;
-
-        String backgroundImageFileName = null;
+        if (osuFiles == null) return null;
 
         for (File osuFile : osuFiles) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
-                String line;
-                boolean inEventsSection = false;
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (line.equals("[Events]")) {
-                        inEventsSection = true;
-                    } else if (inEventsSection && line.startsWith("0,")) {
-                        String[] parts = line.split(",");
-                        if (parts.length >= 3) {
-                            backgroundImageFileName = parts[2].replaceAll("\"", "");
-                            break;
-                        }
-                    }
-                }
-                if (backgroundImageFileName != null) break;
-            } catch (IOException e) {
-                System.err.println("Error leyendo archivo " + osuFile.getAbsolutePath() + ": " + e.getMessage());
-                return null;
+            String bg = extractBackgroundFromOsuFile(osuFile);
+            if (bg != null) {
+                File bgFile = new File(beatmapFolder, bg);
+                if (bgFile.exists()) return bgFile.getAbsolutePath();
             }
         }
+        return null;
+    }
 
-        if (backgroundImageFileName != null) {
-            File bgFile = new File(beatmapFolder, backgroundImageFileName);
-            if (bgFile.exists()) {
-                return bgFile.getAbsolutePath();
+    private String extractBackgroundFromOsuFile(File osuFile) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
+            String line;
+            boolean inEventsSection = false;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.equals("[Events]")) inEventsSection = true;
+                else if (inEventsSection && line.startsWith("0,")) {
+                    String[] parts = line.split(",");
+                    if (parts.length >= 3) return parts[2].replaceAll("\"", "");
+                }
             }
+        } catch (IOException e) {
+            System.err.println("Error leyendo archivo " + osuFile.getAbsolutePath() + ": " + e.getMessage());
         }
         return null;
     }
@@ -127,11 +121,7 @@ public class MusicManager {
 
         File folder = new File(baseFolder);
         File[] videoFiles = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".mp4"));
-        if (videoFiles != null && videoFiles.length > 0) {
-            return videoFiles[0].getAbsolutePath();
-        }
-
-        return null;
+        return (videoFiles != null && videoFiles.length > 0) ? videoFiles[0].getAbsolutePath() : null;
     }
 
     public Image getStoryboardImage(String songName) {
@@ -139,14 +129,7 @@ public class MusicManager {
         if (baseFolder == null) return null;
 
         File storyboardFile = new File(baseFolder, "storyboard.png");
-        if (storyboardFile.exists()) {
-            try {
-                return new Image(storyboardFile.toURI().toString());
-            } catch (Exception e) {
-                System.err.println("Error cargando storyboard para " + songName + ": " + e.getMessage());
-                return null;
-            }
-        }
+        if (storyboardFile.exists()) return new Image(storyboardFile.toURI().toString());
         return null;
     }
 
@@ -174,36 +157,23 @@ public class MusicManager {
             System.err.println("Error leyendo archivo " + osuFile.getAbsolutePath() + ": " + e.getMessage());
         }
 
-        if (title != null && artist != null && audioFilename != null) {
-            return new SongMetadata(title, artist, audioFilename);
-        } else {
-            return null;
-        }
+        return (title != null && artist != null && audioFilename != null) ? new SongMetadata(title, artist, audioFilename) : null;
     }
 
     private List<String> parseTags(File osuFile) {
         List<String> tags = new ArrayList<>();
-
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
             String line;
             boolean inMetadataSection = false;
-
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
-
-                if (line.equals("[Metadata]")) {
-                    inMetadataSection = true;
-                } else if (inMetadataSection) {
+                if (line.equals("[Metadata]")) inMetadataSection = true;
+                else if (inMetadataSection) {
                     if (line.startsWith("Tags:")) {
-                        String tagLine = line.substring(5).trim();
-                        if (!tagLine.isEmpty()) {
-                            String[] splitTags = tagLine.split("\\s+");
-                            Collections.addAll(tags, splitTags);
-                        }
+                        String[] splitTags = line.substring(5).trim().split("\\s+");
+                        Collections.addAll(tags, splitTags);
                         break;
-                    } else if (line.startsWith("[") && line.endsWith("]")) {
-                        break;
-                    }
+                    } else if (line.startsWith("[") && line.endsWith("]")) break;
                 }
             }
         } catch (IOException e) {
@@ -216,19 +186,14 @@ public class MusicManager {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(osuFile), StandardCharsets.UTF_8))) {
             String line;
             boolean inMetadataSection = false;
-
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
-
-                if (line.equals("[Metadata]")) {
-                    inMetadataSection = true;
-                } else if (inMetadataSection) {
+                if (line.equals("[Metadata]")) inMetadataSection = true;
+                else if (inMetadataSection) {
                     if (line.startsWith("Creator:")) {
                         String creator = line.substring(8).trim();
                         return creator.isEmpty() ? Collections.emptyList() : Collections.singletonList(creator);
-                    } else if (line.startsWith("[") && line.endsWith("]")) {
-                        break;
-                    }
+                    } else if (line.startsWith("[") && line.endsWith("]")) break;
                 }
             }
         } catch (IOException e) {
@@ -256,9 +221,7 @@ public class MusicManager {
                 results.add(name);
                 continue;
             }
-
-            List<String> tags = songTags.getOrDefault(name, Collections.emptyList());
-            for (String tag : tags) {
+            for (String tag : songTags.getOrDefault(name, Collections.emptyList())) {
                 if (tag.toLowerCase().contains(lowerQuery)) {
                     results.add(name);
                     break;
@@ -268,51 +231,18 @@ public class MusicManager {
         return results;
     }
 
-    // Métodos de historial que delegan al HistoryManager
-
-    public void addToHistory(String songName) {
-        historyManager.addSong(songName);
-    }
-
-    public String getPreviousFromHistory() {
-        return historyManager.getPrevious();
-    }
-
-    public String getNextFromHistory() {
-        return historyManager.getNext();
-    }
-
-    public boolean hasPreviousInHistory() {
-        return historyManager.hasPrevious();
-    }
-
-    public boolean hasNextInHistory() {
-        return historyManager.hasNext();
-    }
-
-    public String getCurrentHistorySong() {
-        return historyManager.getCurrent();
-    }
-
-    public void clearHistory() {
-        historyManager.clear();
-    }
-
-    public List<String> getHistory() {
-        return historyManager.getHistory();
-    }
-
-    public int getHistoryIndex() {
-        return historyManager.getIndex();
-    }
-
-    public void setHistoryIndex(int index) {
-        historyManager.setIndex(index);
-    }
-
-    public void setHistory(List<String> history, int index) {
-        historyManager.setHistory(history, index);
-    }
+    // Delegación historial
+    public void addToHistory(String songName) { historyManager.addSong(songName); }
+    public String getPreviousFromHistory() { return historyManager.getPrevious(); }
+    public String getNextFromHistory() { return historyManager.getNext(); }
+    public boolean hasPreviousInHistory() { return historyManager.hasPrevious(); }
+    public boolean hasNextInHistory() { return historyManager.hasNext(); }
+    public String getCurrentHistorySong() { return historyManager.getCurrent(); }
+    public void clearHistory() { historyManager.clear(); }
+    public List<String> getHistory() { return historyManager.getHistory(); }
+    public int getHistoryIndex() { return historyManager.getIndex(); }
+    public void setHistoryIndex(int index) { historyManager.setIndex(index); }
+    public void setHistory(List<String> history, int index) { historyManager.setHistory(history, index); }
 
     private static class SongMetadata {
         final String title;

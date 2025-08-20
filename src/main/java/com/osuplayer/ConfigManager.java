@@ -25,6 +25,7 @@ public class ConfigManager {
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
             props.load(input);
         } catch (IOException e) {
+            System.out.println("No se pudo cargar config.properties, se usarán valores por defecto.");
         }
     }
 
@@ -32,16 +33,12 @@ public class ConfigManager {
         try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
             props.store(output, "Configuración de OSU! Music Player");
         } catch (IOException e) {
+            System.out.println("No se pudo guardar config.properties.");
         }
     }
 
     public double getVolume() {
-        String v = props.getProperty("volume", "0.5");
-        try {
-            return Double.parseDouble(v);
-        } catch (NumberFormatException e) {
-            return 0.5;
-        }
+        return parseDouble(props.getProperty("volume", "0.5"), 0.5);
     }
 
     public void setVolume(double volume) {
@@ -59,14 +56,11 @@ public class ConfigManager {
     }
 
     public List<String> getFavorites() {
-        String favs = props.getProperty("favorites", "");
-        if (favs.isEmpty()) return new ArrayList<>();
-        return new ArrayList<>(Arrays.asList(favs.split(",")));
+        return parseList(props.getProperty("favorites", ""), ",");
     }
 
     public void setFavorites(List<String> favorites) {
-        String joined = String.join(",", favorites);
-        props.setProperty("favorites", joined);
+        props.setProperty("favorites", String.join(",", favorites));
         saveProperties();
     }
 
@@ -75,31 +69,16 @@ public class ConfigManager {
         for (String key : props.stringPropertyNames()) {
             if (key.startsWith("playlist.")) {
                 String name = key.substring("playlist.".length());
-                String value = props.getProperty(key);
-                List<String> songs = new ArrayList<>();
-                if (value != null && !value.isEmpty()) {
-                    songs = new ArrayList<>(Arrays.asList(value.split(",")));
-                }
-                playlists.put(name, songs);
+                playlists.put(name, parseList(props.getProperty(key, ""), ","));
             }
         }
         return playlists;
     }
 
     public void setPlaylists(Map<String, List<String>> playlists) {
-        List<String> keysToRemove = new ArrayList<>();
-        for (String key : props.stringPropertyNames()) {
-            if (key.startsWith("playlist.")) {
-                keysToRemove.add(key);
-            }
-        }
-        for (String key : keysToRemove) {
-            props.remove(key);
-        }
+        props.keySet().removeIf(k -> k.toString().startsWith("playlist."));
         for (Map.Entry<String, List<String>> entry : playlists.entrySet()) {
-            String key = "playlist." + entry.getKey();
-            String value = String.join(",", entry.getValue());
-            props.setProperty(key, value);
+            props.setProperty("playlist." + entry.getKey(), String.join(",", entry.getValue()));
         }
         saveProperties();
     }
@@ -109,12 +88,7 @@ public class ConfigManager {
     }
 
     public double getCurrentSongPosition() {
-        String posStr = props.getProperty("currentSongPosition", "0");
-        try {
-            return Double.parseDouble(posStr);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        return parseDouble(props.getProperty("currentSongPosition", "0"), 0);
     }
 
     public void setCurrentSong(String song, double position) {
@@ -133,15 +107,12 @@ public class ConfigManager {
     }
 
     public void setPlayHistory(List<String> history) {
-        String joined = String.join(";", history);
-        props.setProperty("playHistory", joined);
+        props.setProperty("playHistory", String.join(";", history));
         saveProperties();
     }
 
     public List<String> getPlayHistory() {
-        String joined = props.getProperty("playHistory", "");
-        if (joined.isEmpty()) return new ArrayList<>();
-        return new ArrayList<>(Arrays.asList(joined.split(";")));
+        return parseList(props.getProperty("playHistory", ""), ";");
     }
 
     public void setHistoryIndex(int index) {
@@ -162,12 +133,7 @@ public class ConfigManager {
     }
 
     public double getWindowWidth() {
-        String w = props.getProperty("window.width", "1200");
-        try {
-            return Double.parseDouble(w);
-        } catch (NumberFormatException e) {
-            return 1200;
-        }
+        return parseDouble(props.getProperty("window.width", "1200"), 1200);
     }
 
     public void setWindowWidth(double width) {
@@ -176,16 +142,24 @@ public class ConfigManager {
     }
 
     public double getWindowHeight() {
-        String h = props.getProperty("window.height", "720");
-        try {
-            return Double.parseDouble(h);
-        } catch (NumberFormatException e) {
-            return 720;
-        }
+        return parseDouble(props.getProperty("window.height", "720"), 720);
     }
 
     public void setWindowHeight(double height) {
         props.setProperty("window.height", Double.toString(height));
         saveProperties();
+    }
+
+    private double parseDouble(String val, double def) {
+        try {
+            return Double.parseDouble(val);
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
+    private List<String> parseList(String val, String sep) {
+        if (val == null || val.isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(Arrays.asList(val.split(sep)));
     }
 }

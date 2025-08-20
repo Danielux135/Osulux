@@ -1,7 +1,6 @@
 package com.osuplayer;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 
 import javafx.scene.image.Image;
@@ -26,13 +25,11 @@ public class CoverManager {
     }
 
     public Image getDefaultCover() {
-        try (InputStream is = getClass().getResourceAsStream("/default_cover.jpg")) {
-            if (is != null) {
-                return new Image(is, 0, 0, true, true);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        InputStream is = getClass().getResourceAsStream("/default_cover.jpg");
+        if (is != null) {
+            return new Image(is, 0, 0, true, true);
         }
-        return null;
+        // Devuelve una imagen vacía de 1x1 px para no romper la UI
+        return new Image("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z/C/HwAF/gL+gOsk2QAAAABJRU5ErkJggg==");
     }
 }
