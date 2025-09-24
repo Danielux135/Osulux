@@ -7,8 +7,15 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
@@ -20,18 +27,12 @@ public final class UIHelper {
 
     private UIHelper() {}
 
-    public record TopBarComponents(HBox bar, TextField searchField) {}
+    public record TopBarComponents(HBox bar, TextField searchField, ToggleGroup themeToggleGroup) {}
     public record ControlBarComponents(VBox bar, Slider progressSlider, Label timeLabel, Slider volumeSlider, Button previousButton, Button playPauseButton, Button stopButton, Button nextButton, Button shuffleButton) {}
 
-    public static TopBarComponents createTopBar(Stage ownerStage, Consumer<File> onFolderChosen) {
-        Button chooseFolderButton = new Button("Abrir carpeta Songs");
-        chooseFolderButton.setMaxWidth(Double.MAX_VALUE);
-
-        TextField searchField = new TextField();
-        searchField.setPromptText("Buscar canciones, artistas, creadores o tags...");
-        HBox.setHgrow(searchField, Priority.ALWAYS);
-
-        chooseFolderButton.setOnAction(e -> {
+    public static TopBarComponents createTopBar(Stage ownerStage, Consumer<File> onFolderChosen, Consumer<String> onThemeChosen) {
+        MenuItem openFolderItem = new MenuItem("Abrir carpeta de canciones...");
+        openFolderItem.setOnAction(e -> {
             DirectoryChooser directoryChooser = new DirectoryChooser();
             directoryChooser.setTitle("Selecciona la carpeta de canciones de OSU!");
             String userHome = System.getProperty("user.home");
@@ -45,35 +46,55 @@ public final class UIHelper {
             }
         });
 
-        HBox topBox = new HBox(10, chooseFolderButton, searchField);
+        Menu themeMenu = new Menu("Elegir tema");
+        ToggleGroup themeToggleGroup = new ToggleGroup();
+
+        RadioMenuItem blueThemeItem = createThemeMenuItem("Azul claro", "blue", themeToggleGroup, onThemeChosen);
+        RadioMenuItem redThemeItem = createThemeMenuItem("Rojo", "red", themeToggleGroup, onThemeChosen);
+        RadioMenuItem lightRedThemeItem = createThemeMenuItem("Rojo claro", "light-red", themeToggleGroup, onThemeChosen);
+        RadioMenuItem darkThemeItem = createThemeMenuItem("Oscuro", "dark", themeToggleGroup, onThemeChosen);
+        RadioMenuItem lightThemeItem = createThemeMenuItem("Blanco", "light", themeToggleGroup, onThemeChosen);
+
+        themeMenu.getItems().addAll(blueThemeItem, redThemeItem, lightRedThemeItem, darkThemeItem, lightThemeItem);
+
+        Menu optionsMenu = new Menu("Opciones");
+        optionsMenu.setStyle("-fx-font-weight: bold;");
+        optionsMenu.getItems().addAll(openFolderItem, new SeparatorMenuItem(), themeMenu);
+
+        MenuBar menuBar = new MenuBar(optionsMenu);
+
+        TextField searchField = new TextField();
+        searchField.setPromptText("Buscar canciones, artistas, creadores o tags...");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+
+        HBox topBox = new HBox(10, menuBar, searchField);
         topBox.setPadding(new Insets(10));
         topBox.setAlignment(Pos.CENTER_LEFT);
 
-        return new TopBarComponents(topBox, searchField);
+        return new TopBarComponents(topBox, searchField, themeToggleGroup);
     }
-    
-    public static VBox createMediaPanel(StackPane mediaDisplayStack, Label currentSongLabel, Button favoriteButton) {
+
+    private static RadioMenuItem createThemeMenuItem(String text, String themeId, ToggleGroup group, Consumer<String> onThemeChosen) {
+        RadioMenuItem item = new RadioMenuItem(text);
+        item.setToggleGroup(group);
+        item.setUserData(themeId);
+        item.setOnAction(e -> onThemeChosen.accept(themeId));
+        return item;
+    }
+
+    public static BorderPane createMediaPanel(StackPane mediaDisplayStack, Label currentSongLabel, Button favoriteButton) {
         currentSongLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         currentSongLabel.setWrapText(true);
         currentSongLabel.setAlignment(Pos.CENTER);
 
-        VBox coverBox = new VBox(10);
-        coverBox.setAlignment(Pos.TOP_CENTER);
-        
-        StackPane.setAlignment(mediaDisplayStack, Pos.CENTER);
-        coverBox.getChildren().add(mediaDisplayStack);
-
         VBox titleFavoriteBox = new VBox(5);
         titleFavoriteBox.setAlignment(Pos.CENTER);
         titleFavoriteBox.getChildren().addAll(currentSongLabel, favoriteButton);
-        coverBox.getChildren().add(titleFavoriteBox);
-        
-        VBox.setVgrow(mediaDisplayStack, Priority.ALWAYS);
-        coverBox.setPadding(new Insets(10));
 
-        VBox mediaContainer = new VBox(coverBox);
+        BorderPane mediaContainer = new BorderPane();
         mediaContainer.setPadding(new Insets(10));
-        VBox.setVgrow(coverBox, Priority.ALWAYS);
+        mediaContainer.setCenter(mediaDisplayStack);
+        mediaContainer.setBottom(titleFavoriteBox);
 
         return mediaContainer;
     }
@@ -87,7 +108,7 @@ public final class UIHelper {
         Button stopButton = createControlButton("⏹");
         Button nextButton = createControlButton("⏭");
         Button shuffleButton = createControlButton("🔀");
-        
+
         HBox controlBox = new HBox(10, previousButton, playPauseButton, stopButton, nextButton, shuffleButton, volumeSlider);
         controlBox.setAlignment(Pos.CENTER);
         controlBox.setPadding(new Insets(5, 10, 5, 10));
@@ -96,7 +117,7 @@ public final class UIHelper {
         progressBox.setAlignment(Pos.CENTER);
         progressBox.setPadding(new Insets(0, 10, 5, 10));
         HBox.setHgrow(progressSlider, Priority.ALWAYS);
-        
+
         VBox bottomBox = new VBox(controlBox, progressBox);
 
         return new ControlBarComponents(bottomBox, progressSlider, timeLabel, volumeSlider, previousButton, playPauseButton, stopButton, nextButton, shuffleButton);

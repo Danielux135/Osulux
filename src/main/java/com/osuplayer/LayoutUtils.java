@@ -5,6 +5,7 @@ import javafx.scene.Node;
 import javafx.scene.control.SplitPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 
 public final class LayoutUtils {
@@ -12,7 +13,6 @@ public final class LayoutUtils {
     private static final double MIN_PLAYLIST_WIDTH = 180;
     private static final double MIN_SONGS_WIDTH = 400;
     private static final double MIN_RIGHT_PANEL_WIDTH = 170;
-
     private static double lastDivider0 = 0.15;
     private static double lastDivider1 = 0.75;
 
@@ -36,8 +36,8 @@ public final class LayoutUtils {
                 double total = newVal.doubleValue();
                 if (total <= 0) return;
 
-                double leftPref = leftPane.prefWidth(-1);
-                double middlePref = middlePane.prefWidth(-1);
+                double leftPref = ((Region) leftPane).getPrefWidth();
+                double middlePref = ((Region) middlePane).getPrefWidth();
                 
                 leftPref = Math.max(MIN_PLAYLIST_WIDTH, leftPref);
                 middlePref = Math.max(MIN_SONGS_WIDTH, middlePref);
@@ -74,12 +74,8 @@ public final class LayoutUtils {
         leftWidth = Math.max(MIN_PLAYLIST_WIDTH, Math.min(leftWidth, total - MIN_SONGS_WIDTH - MIN_RIGHT_PANEL_WIDTH));
         middleWidth = Math.max(MIN_SONGS_WIDTH, Math.min(middleWidth, total - leftWidth - MIN_RIGHT_PANEL_WIDTH));
 
-        if (leftPane instanceof javafx.scene.layout.Region) {
-            ((javafx.scene.layout.Region) leftPane).setPrefWidth(leftWidth);
-        }
-        if (middlePane instanceof javafx.scene.layout.Region) {
-            ((javafx.scene.layout.Region) middlePane).setPrefWidth(middleWidth);
-        }
+        ((Region) leftPane).setPrefWidth(leftWidth);
+        ((Region) middlePane).setPrefWidth(middleWidth);
 
         lastDivider0 = leftWidth / total;
         lastDivider1 = (leftWidth + middleWidth) / total;
@@ -87,29 +83,27 @@ public final class LayoutUtils {
     }
 
     public static void updateMediaDisplaySize(
-            double rightWidth, 
-            double totalHeight, 
+            double containerWidth, 
+            double containerHeight, 
             ImageView coverImageView, 
             ImageView videoImageView, 
-            StackPane mediaDisplayStack, 
+            StackPane mediaDisplayStack,
             boolean isVideoVisible) {
 
-        if (rightWidth <= 0 || totalHeight <= 0) return;
-        double availableWidth = Math.max(1, rightWidth - 20);
-        double availableHeight = Math.max(1, totalHeight - 120);
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+        
+        double availableWidth = Math.max(1, mediaDisplayStack.getWidth());
+        double availableHeight = Math.max(1, mediaDisplayStack.getHeight());
 
         Image img = isVideoVisible ? videoImageView.getImage() : coverImageView.getImage();
+        
         coverImageView.setFitWidth(availableWidth);
+        coverImageView.setFitHeight(availableHeight);
         videoImageView.setFitWidth(availableWidth);
+        videoImageView.setFitHeight(availableHeight);
 
-        if (img == null || img.getWidth() <= 0 || img.getHeight() <= 0) {
-            mediaDisplayStack.setPrefSize(availableWidth, availableHeight + 120);
-            return;
+        if (img == null) {
+            mediaDisplayStack.setPrefSize(availableWidth, availableHeight);
         }
-
-        double ratio = img.getWidth() / img.getHeight();
-        double height = availableWidth / ratio;
-        mediaDisplayStack.setPrefWidth(availableWidth);
-        mediaDisplayStack.setPrefHeight(height + 120);
     }
 }

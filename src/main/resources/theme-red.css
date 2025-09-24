@@ -1,0 +1,80 @@
+/* src/main/resources/theme-red.css */
+.root {
+    /* --- CAMBIO: Paleta de colores Rojo Inmersivo --- */
+    -fx-base: #4C1A1B; /* Un rojo muy oscuro, casi negro, para el fondo principal */
+    -fx-background: #4C1A1B;
+    -fx-control-inner-background: #5A2A2B; /* Fondo de listas, un poco más claro */
+    -fx-accent: #F44336; /* Un rojo brillante y enérgico para la selección */
+    -fx-default-button: #7B3A3B;
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #F5E8E8; /* Texto de un blanco rojizo muy claro */
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: derive(-fx-base, 10%);
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #2E1011;
+}
+
+.list-view {
+    -fx-background-color: #5A2A2B; /* Fondo de la lista (color de fila par) */
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    /* Filas impares: un rojo un poco más oscuro que el fondo de la lista */
+    -fx-background-color: #522526;
+}
+.list-cell:even {
+    /* Filas pares son transparentes, mostrando el fondo de la lista */
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover { 
+    -fx-background-color: #8C4A4B;
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #6E3B3C; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; 
+    -fx-text-fill: white;
+}
+
+.button { 
+    -fx-background-color: -fx-default-button; 
+    -fx-text-fill: -fx-text-background-color; 
+}
+.button:hover { 
+    -fx-background-color: #8C4A4B;
+}
+.slider .thumb { 
+    -fx-background-color: -fx-accent;
+}
+.slider .track { 
+    -fx-background-color: #7B3A3B;
+}
+.menu:hover, .menu-item:hover { 
+    -fx-background-color: #7B3A3B;
+}
+
+.text-field {
+    -fx-prompt-text-fill: #BDBDBD; /* Hacemos el prompt text legible */
+    -fx-text-fill: -fx-text-background-color;
+    -fx-border-color: #2E1011;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #F4433633, 5, 0, 0, 0);
+}

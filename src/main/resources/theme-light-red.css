@@ -1,0 +1,81 @@
+/* src/main/resources/theme-light-red.css */
+.root {
+    /* --- CAMBIO: Paleta de colores "Rojo Claro Vibrante" --- */
+    -fx-base: #FFEAE5; /* Fondo con un tinte salmón muy claro para evitar el rosa */
+    -fx-background: #FFEAE5;
+    -fx-control-inner-background: #FFF8F6; /* Un blanco aún más cálido y claro para alternar */
+    -fx-accent: #F44336; /* Un rojo primario, brillante y vibrante */
+    -fx-default-button: #FFB5A7; /* Botones de un rojo coral claro, claramente no rosa */
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #333333; /* Texto en un gris muy oscuro para máxima legibilidad */
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: #FFB5A7; /* Menús con el color base de los botones */
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #FF9782; /* Un rojo coral más saturado para la separación */
+}
+
+/* --- Celdas con fondo rojo claro y blanco cálido --- */
+.list-view {
+    /* El fondo de toda la lista es el color de las filas PARES */
+    -fx-background-color: #FFEAE5;
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    /* Las filas IMPARES son de un blanco cálido */
+    -fx-background-color: #FFF8F6; 
+}
+.list-cell:even {
+    /* Las filas PARES son transparentes, mostrando el fondo */
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover { 
+    -fx-background-color: #FF9782; /* Hover con un color más intenso */
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #DCDCDC; /* Un gris neutro claro para la selección sin foco */
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; 
+    -fx-text-fill: white;
+}
+/* --- FIN DEL CAMBIO --- */
+
+.button { 
+    -fx-background-color: -fx-default-button; 
+    -fx-text-fill: -fx-text-background-color; 
+}
+.button:hover { 
+    -fx-background-color: #FF9782;
+}
+.slider .thumb { 
+    -fx-background-color: -fx-accent;
+}
+.slider .track { 
+    -fx-background-color: #FFB5A7;
+}
+.menu:hover, .menu-item:hover { 
+    -fx-background-color: #FF9782;
+}
+
+.text-field {
+    -fx-border-color: #FFB5A7;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #F4433633, 5, 0, 0, 0);
+}

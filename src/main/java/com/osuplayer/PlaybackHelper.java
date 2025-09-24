@@ -13,19 +13,24 @@ public class PlaybackHelper {
         this.videoPlayer = videoPlayer;
     }
 
+    /**
+     * Alterna entre reproducir y pausar la música y el vídeo sincronizadamente.
+     * Ejecuta los callbacks correspondientes para actualizar la interfaz de usuario.
+     * 
+     * @param onPlay  Una acción a ejecutar cuando la reproducción comienza o se reanuda.
+     * @param onPause Una acción a ejecutar cuando la reproducción se pausa.
+     */
     public void togglePlayPause(Runnable onPlay, Runnable onPause) {
         State state = audioPlayer.status().state();
-        if (state == null || state == State.STOPPED || state == State.ENDED) {
-            audioPlayer.controls().play();
-            videoPlayer.controls().pause();
-            onPlay.run();
-        } else if (state == State.PLAYING) {
+
+        if (state == State.PLAYING) {
             audioPlayer.controls().pause();
             videoPlayer.controls().pause();
             onPause.run();
-        } else {
+        }
+        else {
             audioPlayer.controls().play();
-            videoPlayer.controls().pause();
+            videoPlayer.controls().play();
             onPlay.run();
         }
     }

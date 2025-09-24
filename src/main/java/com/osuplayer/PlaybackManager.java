@@ -17,6 +17,7 @@ public class PlaybackManager {
     private final EmbeddedMediaPlayer videoPlayer;
     private final ConfigManager configManager;
     private final UIController uiController;
+    private final DiscordRichPresence discord;
 
     private Slider progressSlider;
     private Label timeLabel;
@@ -27,12 +28,19 @@ public class PlaybackManager {
     private boolean shuffleEnabled = false;
     private final Random random = new Random();
     private long currentMediaDuration = -1;
+    
+    private String currentSongNameForDiscord;
 
-    public PlaybackManager(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, UIController uiController) {
+    // --- NUEVA VARIABLE ---
+    // Esta "bandera" evitará que el contador de Discord se reinicie.
+    private boolean isDiscordStateSetForCurrentSong = false;
+
+    public PlaybackManager(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, UIController uiController, DiscordRichPresence discord) {
         this.audioPlayer = audioPlayer;
         this.videoPlayer = videoPlayer;
         this.configManager = configManager;
         this.uiController = uiController;
+        this.discord = discord;
     }
 
     public void initializeControls(Slider progressSlider, Label timeLabel, Slider volumeSlider, Button playPauseButton, Button shuffleButton, Button previousButton, Button stopButton, Button nextButton) {
@@ -69,6 +77,13 @@ public class PlaybackManager {
                 Platform.runLater(() -> {
                     if (newLength > 0) {
                         progressSlider.setMax(newLength / 1000.0);
+                        
+                        // --- CAMBIO ---
+                        // Usamos la bandera para que esto solo se ejecute UNA VEZ por canción.
+                        if (!isDiscordStateSetForCurrentSong) {
+                            updateDiscordPresence(0, newLength);
+                            isDiscordStateSetForCurrentSong = true; // ¡Levantamos la bandera!
+                        }
                     }
                 });
             }
@@ -77,6 +92,11 @@ public class PlaybackManager {
     
     public void onNewMedia() {
         currentMediaDuration = -1;
+        
+        // --- CAMBIO ---
+        // Reseteamos la bandera cada vez que empieza una nueva canción.
+        this.isDiscordStateSetForCurrentSong = false;
+        
         Platform.runLater(() -> {
             progressSlider.setValue(0);
             progressSlider.setMax(0);
@@ -93,10 +113,10 @@ public class PlaybackManager {
             if (videoPlayer.status().isPlaying()) {
                 videoPlayer.controls().setTime(time);
             }
+            updateDiscordPresence(time, currentMediaDuration);
         });
 
         volumeSlider.setValue(configManager.getVolume() * 100);
-        audioPlayer.audio().setVolume((int) volumeSlider.getValue());
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             audioPlayer.audio().setVolume(newVal.intValue());
             configManager.setVolume(newVal.doubleValue() / 100.0);
@@ -115,6 +135,9 @@ public class PlaybackManager {
             audioPlayer.controls().pause();
             videoPlayer.controls().pause();
             playPauseButton.setText("▶");
+            if (discord != null) {
+                discord.setIdleStatus();
+            }
         } else {
             if (state == State.STOPPED || state == State.ENDED || state == null) {
                  uiController.playSelectedSong();
@@ -122,6 +145,10 @@ public class PlaybackManager {
                 audioPlayer.controls().play();
                 videoPlayer.controls().play();
                 playPauseButton.setText("⏸");
+                if (discord != null) {
+                    long currentTime = audioPlayer.status().time();
+                    updateDiscordPresence(currentTime, currentMediaDuration);
+                }
             }
         }
     }
@@ -133,16 +160,31 @@ public class PlaybackManager {
         onNewMedia();
         uiController.hideVideo();
         uiController.prepareCurrentSongForReplay();
+        
+        if (discord != null) {
+            discord.setIdleStatus();
+        }
+    }
+    
+    public void setCurrentSongForDiscord(String songName) {
+        this.currentSongNameForDiscord = songName;
+    }
+
+    public void updateDiscordPresence(long currentTimeMillis, long totalDurationMillis) {
+        if (discord != null && currentSongNameForDiscord != null && !currentSongNameForDiscord.isEmpty()) {
+            String artist = "Artista desconocido";
+            String title = currentSongNameForDiscord;
+            String[] parts = currentSongNameForDiscord.split(" - ", 2);
+            if (parts.length == 2) {
+                artist = parts[0];
+                title = parts[1];
+            }
+            discord.updateStatus(title, artist, currentTimeMillis, totalDurationMillis);
+        }
     }
 
     public void updatePlayPauseButton(boolean isPlaying) {
         playPauseButton.setText(isPlaying ? "⏸" : "▶");
-    }
-
-    public void setProgressMax(double maxSeconds) {
-        if(maxSeconds > 0) {
-            progressSlider.setMax(maxSeconds);
-        }
     }
 
     private void toggleShuffle() {
@@ -157,16 +199,14 @@ public class PlaybackManager {
     public boolean isShuffleEnabled() {
         return shuffleEnabled;
     }
-
+    
     public int getRandomIndex(int bound) {
         if (bound <= 0) return 0;
         return random.nextInt(bound);
     }
-
     private void updateTimeLabel(double currentSeconds, double totalSeconds) {
         timeLabel.setText(formatTime(currentSeconds) + " / " + formatTime(totalSeconds));
     }
-
     private String formatTime(double seconds) {
         if (Double.isNaN(seconds) || seconds < 0) seconds = 0;
         int s = (int) Math.round(seconds);

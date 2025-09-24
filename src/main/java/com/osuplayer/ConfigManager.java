@@ -149,6 +149,26 @@ public class ConfigManager {
         props.setProperty("window.height", Double.toString(height));
         saveProperties();
     }
+    
+    // --- MÉTODOS PARA LA GESTIÓN DE TEMAS ---
+
+    /**
+     * Obtiene el tema guardado. El valor por defecto ahora es "dark".
+     * @return El ID del tema ("blue", "dark", "light").
+     */
+    public String getTheme() {
+        // --- AQUÍ ESTÁ EL ÚNICO CAMBIO ---
+        return props.getProperty("theme", "dark");
+    }
+
+    /**
+     * Guarda el tema seleccionado en el archivo de configuración.
+     * @param themeId El ID del tema a guardar.
+     */
+    public void setTheme(String themeId) {
+        props.setProperty("theme", themeId);
+        saveProperties();
+    }
 
     private double parseDouble(String val, double def) {
         try {

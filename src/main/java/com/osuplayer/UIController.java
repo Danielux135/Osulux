@@ -2,6 +2,7 @@ package com.osuplayer;
 
 import java.io.File;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -13,12 +14,12 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.Toggle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
@@ -26,6 +27,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
@@ -36,10 +38,8 @@ public class UIController {
     private final ListView<String> songListView = new ListView<>();
     private FilteredList<String> filteredSongList;
     private final ObservableList<String> masterSongList = FXCollections.observableArrayList();
-
     private final EmbeddedMediaPlayer audioPlayer;
     private final EmbeddedMediaPlayer videoPlayer;
-
     private final MusicManager musicManager;
     private final ConfigManager configManager;
     private final PlaylistManager playlistManager;
@@ -48,21 +48,18 @@ public class UIController {
     private final VideoVisibilityHelper videoVisibilityHelper;
     private final FavoritesManager favoritesManager;
     private final SearchManager searchManager;
-
     private final Label currentSongLabel = new Label("Sin canción");
     private final Button favoriteButton = new Button("♡");
-
     private final ImageView coverImageView;
     private final ImageView videoImageView;
     private final StackPane mediaDisplayStack;
-    private VBox mediaContainer;
-
+    private BorderPane mediaContainer;
     private final ExportManager exportManager;
     private final CoverManager coverManager;
-
     private final HistoryManager historyManager = new HistoryManager();
+    private Scene scene;
 
-    public UIController(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, MusicManager musicManager) {
+    public UIController(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, MusicManager musicManager, DiscordRichPresence discord) {
         this.audioPlayer = audioPlayer;
         this.videoPlayer = videoPlayer;
         this.configManager = configManager;
@@ -76,7 +73,8 @@ public class UIController {
         this.favoritesManager = new FavoritesManager(configManager, playlistManager);
         this.searchManager = new SearchManager(musicManager);
 
-        this.playbackManager = new PlaybackManager(audioPlayer, videoPlayer, configManager, this);
+        this.playbackManager = new PlaybackManager(audioPlayer, videoPlayer, configManager, this, discord);
+        
         this.exportManager = new ExportManager(musicManager);
         this.coverManager = new CoverManager(musicManager);
         this.playlistHelper = new PlaylistHelper(playlistManager, exportManager);
@@ -125,80 +123,119 @@ public class UIController {
     
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Osulux");
-
+    
         try (InputStream iconStream = getClass().getResourceAsStream("/Icon.jpg")) {
             if (iconStream != null) {
                 primaryStage.getIcons().add(new Image(iconStream));
             }
         } catch (Exception ignored) {}
-
-        UIHelper.TopBarComponents topBar = UIHelper.createTopBar(primaryStage, this::handleFolderSelection);
+    
+        UIHelper.TopBarComponents topBar = UIHelper.createTopBar(primaryStage, this::handleFolderSelection, this::applyTheme);
         UIHelper.ControlBarComponents controlBar = UIHelper.createControlBar();
-        
+    
         searchManager.setupSearchField(topBar.searchField(), songListView, currentSongLabel);
         playbackManager.initializeControls(controlBar.progressSlider(), controlBar.timeLabel(), controlBar.volumeSlider(), controlBar.playPauseButton(), controlBar.shuffleButton(), controlBar.previousButton(), controlBar.stopButton(), controlBar.nextButton());
-        
+    
         songListView.setCellFactory(lv -> new SongListCell(playlistManager, favoritesManager, exportManager, this::refreshUIState));
         songListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 playSelectedSong();
             }
         });
-
+    
         mediaContainer = UIHelper.createMediaPanel(mediaDisplayStack, currentSongLabel, favoriteButton);
-        
-        VBox playlistBox = playlistHelper.initialize(this::selectPlaylist);
-        playlistBox.setPadding(new Insets(10));
-        playlistBox.setPrefWidth(200);
-
-        final VBox songListContainer = new VBox(songListView);
-        songListContainer.setPadding(new Insets(10));
-        songListContainer.setPrefWidth(520);
-        VBox.setVgrow(songListView, Priority.ALWAYS);
-        
-        SplitPane splitPane = new SplitPane(playlistBox, songListContainer, mediaContainer);
-        LayoutUtils.setupDynamicSplitPane(splitPane, playlistBox, songListContainer, mediaContainer);
-        
-        BiConsumer<Double, Double> updateMediaSize = (width, height) -> 
-            LayoutUtils.updateMediaDisplaySize(
-                mediaContainer.getWidth(), 
-                splitPane.getHeight(), 
-                coverImageView, 
-                videoImageView, 
-                mediaDisplayStack, 
-                videoVisibilityHelper.isVideoVisible()
-            );
-
-        splitPane.heightProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
-        mediaContainer.widthProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
-        mediaContainer.heightProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
-        
-        songListView.prefHeightProperty().bind(splitPane.heightProperty().subtract(20));
-
-        String lastFolder = configManager.getLastFolder();
-        if (lastFolder != null && !lastFolder.isEmpty()) {
-            File folder = new File(lastFolder);
-            if (folder.exists() && folder.isDirectory()) {
-                handleFolderSelection(folder);
-            }
-        }
-
-        String lastSong = configManager.getLastSong();
-        if (lastSong != null && !lastSong.isEmpty()) {
-            selectAndPreloadLastSong(lastSong);
-            Platform.runLater(() -> updateMediaSize.accept(null, null));
-        }
-
+    
         BorderPane root = new BorderPane();
         root.setTop(topBar.bar());
-        root.setCenter(splitPane);
         root.setBottom(controlBar.bar());
-
-        Scene scene = new Scene(root, 1200, 720);
+    
+        this.scene = new Scene(root, configManager.getWindowWidth(), configManager.getWindowHeight());
+    
+        VBox playlistBox = playlistHelper.initialize(this::selectPlaylist, scene.getStylesheets());
+        final VBox songListContainer = new VBox(songListView);
+        VBox.setVgrow(songListView, Priority.ALWAYS);
+    
+        SplitPane splitPane = new SplitPane(playlistBox, songListContainer, mediaContainer);
+        LayoutUtils.setupDynamicSplitPane(splitPane, playlistBox, songListContainer, mediaContainer);
+    
+        root.setCenter(splitPane);
+    
         primaryStage.setScene(scene);
+    
+        String savedTheme = configManager.getTheme();
+        applyTheme(savedTheme);
+        for (Toggle toggle : topBar.themeToggleGroup().getToggles()) {
+            if (savedTheme.equals(toggle.getUserData())) {
+                toggle.setSelected(true);
+                break;
+            }
+        }
+    
         primaryStage.show();
+    
+        Platform.runLater(() -> {
+            BiConsumer<Double, Double> updateMediaSize = (width, height) ->
+                LayoutUtils.updateMediaDisplaySize(
+                    mediaContainer.getWidth(),
+                    splitPane.getHeight(),
+                    coverImageView,
+                    videoImageView,
+                    mediaDisplayStack,
+                    videoVisibilityHelper.isVideoVisible()
+                );
+    
+            splitPane.heightProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
+            mediaContainer.widthProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
+            mediaContainer.heightProperty().addListener((obs, oldVal, newVal) -> updateMediaSize.accept(null, null));
+            songListView.prefHeightProperty().bind(splitPane.heightProperty());
+    
+            updateMediaSize.accept(null, null);
+    
+            String lastFolder = configManager.getLastFolder();
+            File folder = (lastFolder != null && !lastFolder.isEmpty()) ? new File(lastFolder) : null;
+    
+            if (folder == null || !folder.isDirectory()) {
+                promptForSongFolder(primaryStage);
+            } else {
+                handleFolderSelection(folder);
+            }
+    
+            String lastSong = configManager.getLastSong();
+            if (lastSong != null && !lastSong.isEmpty()) {
+                selectAndPreloadLastSong(lastSong);
+            }
+        });
+    }
+    
 
-        Platform.runLater(() -> updateMediaSize.accept(null, null));
+    private void applyTheme(String themeId) {
+        if (scene == null) return;
+        scene.getStylesheets().removeIf(s -> s.contains("theme-"));
+
+        if (themeId != null && !themeId.isEmpty()) {
+            String cssPath = "/theme-" + themeId + ".css";
+            URL cssUrl = getClass().getResource(cssPath);
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+                configManager.setTheme(themeId);
+            } else {
+                System.err.println("No se pudo encontrar el archivo de tema: " + cssPath);
+            }
+        }
+    }
+    
+    private void promptForSongFolder(Stage ownerStage) {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecciona tu carpeta de canciones de osu!");
+        String userHome = System.getProperty("user.home");
+        File defaultDir = new File(userHome, "AppData/Local/osu!/Songs");
+        if (defaultDir.exists() && defaultDir.isDirectory()) {
+            directoryChooser.setInitialDirectory(defaultDir);
+        }
+        File selectedDirectory = directoryChooser.showDialog(ownerStage);
+        if (selectedDirectory != null) {
+            handleFolderSelection(selectedDirectory);
+        }
     }
 
     private void handleFolderSelection(File folder) {
@@ -228,15 +265,13 @@ public class UIController {
     }
     
     private void selectAndPreloadLastSong(String lastSong) {
-        if (lastSong == null || lastSong.isEmpty()) return;
-        if (masterSongList.isEmpty()) {
-            loadSongs(new File(configManager.getLastFolder()));
+        if (lastSong == null || lastSong.isEmpty() || masterSongList.isEmpty()) {
+            return;
         }
         Platform.runLater(() -> {
             int index = masterSongList.indexOf(lastSong);
             if (index >= 0) {
-                songListView.getSelectionModel().select(index);
-                songListView.scrollTo(index);
+                scrollToAndSelect(index);
                 currentSongLabel.setText(lastSong);
                 updateFavoriteButton(lastSong);
                 updateCoverImage(lastSong);
@@ -343,6 +378,7 @@ public class UIController {
         String songPath = musicManager.getSongPath(songName);
         if (songPath == null) return;
 
+        playbackManager.setCurrentSongForDiscord(songName);
         playbackManager.onNewMedia();
 
         audioPlayer.controls().stop();
@@ -384,11 +420,19 @@ public class UIController {
             String currentSong = currentSongLabel.getText();
             if (currentSong != null && filteredSongList != null && !filteredSongList.isEmpty()) {
                 int index = filteredSongList.indexOf(currentSong);
-                if (index >= 0) {
-                    songListView.getSelectionModel().select(index);
-                    songListView.scrollTo(index);
-                }
+                scrollToAndSelect(index);
             }
+        });
+    }
+
+    private void scrollToAndSelect(int index) {
+        if (index < 0) return;
+
+        int scrollToIndex = Math.max(0, index - 5); 
+        songListView.scrollTo(scrollToIndex);
+
+        Platform.runLater(() -> {
+            songListView.getSelectionModel().select(index);
         });
     }
 

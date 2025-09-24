@@ -1,8 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.osuplayer</groupId>
     <artifactId>osu-music-player</artifactId>
     <version>1.0.0</version>
@@ -13,6 +14,13 @@
         <javafx.version>21.0.8</javafx.version>
         <vlcj.version>4.7.1</vlcj.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
@@ -60,13 +68,17 @@
             <artifactId>json</artifactId>
             <version>20220924</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.JnCrMx</groupId>
+            <artifactId>Discord-Game-SDK4J</artifactId>
+            <version>0.5.2</version>
+        </dependency>
     </dependencies>
 
     <build>
-        <!-- 👇 Esto asegura que el nombre final sea siempre osulux.jar -->
         <finalName>osulux</finalName>
-
         <plugins>
+            <!-- Compilador -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -82,9 +94,10 @@
                 <version>3.3.0</version>
                 <configuration>
                     <finalName>osulux</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>com.osuplayer.MainApp</mainClass>
+                            <mainClass>com.osuplayer.Launcher</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
