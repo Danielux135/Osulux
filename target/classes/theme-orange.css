@@ -1,0 +1,80 @@
+/* src/main/resources/theme-orange.css */
+.root {
+    /* --- Paleta de colores "Naranja" Vibrante y Oscura (Versión Final) --- */
+    -fx-base: #8C3B00; /* Un naranja oscuro y rico, claramente naranja, no marrón */
+    -fx-background: #8C3B00;
+    -fx-control-inner-background: #A54F18; /* Un tono medio anaranjado para áreas de contenido */
+    -fx-accent: #FB8C00; /* Un naranja muy brillante y energético para el acento principal */
+    -fx-default-button: #D06520; /* Botones en un naranja notablemente más claro */
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #FFEFE2; /* Texto en un color melocotón muy pálido para calidez */
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: derive(-fx-base, 15%);
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #612900; /* El tono más profundo de la paleta, pero aún con tinte naranja */
+}
+
+.list-view {
+    -fx-background-color: #A54F18; /* Fondo de la lista (color de fila par) */
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    /* Filas impares: un naranja un poco más oscuro que el fondo de la lista */
+    -fx-background-color: #984615;
+}
+.list-cell:even {
+    /* Filas pares son transparentes, mostrando el fondo de la lista */
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover { 
+    -fx-background-color: #E57E30; /* Hover muy notable y brillante */
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #B8591B; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; 
+    -fx-text-fill: #4E342E; /* Texto marrón oscuro para máximo contraste sobre el acento */
+}
+
+.button { 
+    -fx-background-color: -fx-default-button; 
+    -fx-text-fill: -fx-text-background-color; 
+}
+.button:hover { 
+    -fx-background-color: #E57E30;
+}
+.slider .thumb { 
+    -fx-background-color: -fx-accent;
+}
+.slider .track { 
+    -fx-background-color: #B8591B;
+}
+.menu:hover, .menu-item:hover { 
+    -fx-background-color: #B8591B;
+}
+
+.text-field {
+    -fx-prompt-text-fill: #FFD1A9; /* Prompt text anaranjado claro y legible */
+    -fx-text-fill: -fx-text-background-color;
+    -fx-border-color: #612900;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #FB8C0033, 5, 0, 0, 0);
+}

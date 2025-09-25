@@ -1,0 +1,81 @@
+/* src/main/resources/theme-light-red.css */
+.root {
+    /* --- Paleta de colores "Rojo Claro" basada en el tema Azul --- */
+    -fx-base: #FFEBEE; /* El rojo más pálido, equivalente al azul #f0faff */
+    -fx-background: #FFEBEE;
+    -fx-control-inner-background: #FFF8F8; /* Un "blanco" con un tinte rojo, para no usar blanco puro */
+    -fx-accent: #E53935; /* Un rojo brillante y enérgico, equivalente al azul #1DA1F2 */
+    -fx-default-button: #FFCDD2; /* Un rojo claro para botones, equivalente al azul #e8f5fd */
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #4E342E; /* Texto marrón oscuro para un look cálido y legible */
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: #FFCDD2;
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #EF9A9A; /* Rojo medio para separadores y hovers, equivalente al azul #d1e9f9 */
+}
+
+.list-view {
+    -fx-background-color: #FFCDD2; /* Fondo de la lista, igual que los botones */
+    -fx-background-insets: 0;
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    /* Filas impares usan el color base más pálido */
+    -fx-background-color: #FFEBEE;
+}
+.list-cell:even {
+    /* Filas pares usan el "blanco rojizo" del fondo de control */
+    -fx-background-color: #FFF8F8;
+}
+.list-cell:filled:hover { 
+    -fx-background-color: #EF9A9A; 
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #D5D8DC; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; 
+    -fx-text-fill: white;
+}
+
+.button { 
+    -fx-background-color: -fx-default-button; 
+    -fx-text-fill: -fx-text-background-color; 
+}
+.button:hover { 
+    -fx-background-color: #EF9A9A; 
+}
+.slider .thumb { 
+    -fx-background-color: -fx-accent; 
+}
+.slider .track { 
+    -fx-background-color: #EF9A9A; 
+}
+.menu:hover, .menu-item:hover { 
+    -fx-background-color: #EF9A9A; 
+}
+
+.text-field {
+    -fx-border-color: #FFCDD2; /* Borde sutil del color de los botones */
+    -fx-border-radius: 3;
+}
+
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    /* Efecto de brillo interior con el color de acento rojo */
+    -fx-effect: innershadow(gaussian, #E5393533, 5, 0, 0, 0);
+}

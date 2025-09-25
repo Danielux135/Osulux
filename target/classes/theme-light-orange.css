@@ -1,0 +1,76 @@
+/* src/main/resources/theme-light-orange.css */
+.root {
+    /* --- Paleta de colores "Naranja Claro Vibrante" --- */
+    -fx-base: #FFEAE5; /* Fondo con un tinte salmón muy claro */
+    -fx-background: #FFEAE5;
+    -fx-control-inner-background: #FFF8F6; /* Un blanco aún más cálido y claro para alternar */
+    -fx-accent: #F44336; /* Un rojo anaranjado (coral), brillante y vibrante */
+    -fx-default-button: #FFB5A7; /* Botones de un rojo coral claro */
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #333333; /* Texto en un gris muy oscuro para máxima legibilidad */
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: #FFB5A7;
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #FF9782; /* Un rojo coral más saturado para la separación */
+}
+
+.list-view {
+    -fx-background-color: #FFEAE5;
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    -fx-background-color: #FFF8F6; 
+}
+.list-cell:even {
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover { 
+    -fx-background-color: #FF9782;
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #DCDCDC; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; 
+    -fx-text-fill: white;
+}
+
+.button { 
+    -fx-background-color: -fx-default-button; 
+    -fx-text-fill: -fx-text-background-color; 
+}
+.button:hover { 
+    -fx-background-color: #FF9782;
+}
+.slider .thumb { 
+    -fx-background-color: -fx-accent;
+}
+.slider .track { 
+    -fx-background-color: #FFB5A7;
+}
+.menu:hover, .menu-item:hover { 
+    -fx-background-color: #FF9782;
+}
+
+.text-field {
+    -fx-border-color: #FFB5A7;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #F4433633, 5, 0, 0, 0);
+}

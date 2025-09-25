@@ -1,0 +1,50 @@
+/* src/main/resources/theme-light.css */
+.root {
+    -fx-base: #f4f4f4;
+    -fx-accent: #0078D7;
+    -fx-focus-color: -fx-accent;
+    -fx-text-background-color: black; /* Color de texto por defecto */
+}
+
+/* --- REGLA AÑADIDA --- */
+/* Nos aseguramos de que todas las etiquetas usen el color de texto definido */
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+/* --- FIN DE LA REGLA --- */
+
+.list-view {
+    -fx-background-color: #f4f4f4; /* Fondo de la lista (color de fila par) */
+}
+.list-cell {
+    -fx-padding: 3px 5px; /* Restauramos el padding */
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    -fx-background-color: white; /* Color de fila impar */
+}
+.list-cell:even {
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover {
+    -fx-background-color: #e0e0e0;
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #D5D8DC;
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent;
+    -fx-text-fill: white;
+}
+
+/* Añadimos estilos para el campo de búsqueda para consistencia */
+.text-field {
+    -fx-border-color: #D5D8DC;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #0078D733, 5, 0, 0, 0);
+}

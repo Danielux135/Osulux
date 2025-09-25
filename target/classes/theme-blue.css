@@ -1,0 +1,67 @@
+/* src/main/resources/theme-blue.css */
+.root {
+    -fx-base: #f0faff;
+    -fx-background: #f0faff;
+    -fx-control-inner-background: white;
+    -fx-accent: #1DA1F2; /* Azul cielo brillante y enérgico */
+    -fx-default-button: #e8f5fd;
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: -fx-accent22;
+    -fx-text-background-color: #1c2938;
+}
+
+.menu-bar, .context-menu {
+    -fx-background-color: #e8f5fd;
+}
+
+.label, .menu .label, .menu-item .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.split-pane {
+    -fx-background-color: #d1e9f9;
+}
+
+.list-view {
+    -fx-background-color: #e6f5fd;
+    -fx-background-insets: 0;
+}
+.list-cell {
+    -fx-padding: 3px 5px; 
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    -fx-background-color: #f0faff;
+}
+.list-cell:even {
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover { -fx-background-color: #d1e9f9; }
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #D5D8DC; -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent; -fx-text-fill: white;
+}
+
+.button { -fx-background-color: -fx-default-button; -fx-text-fill: -fx-text-background-color; }
+.button:hover { -fx-background-color: #d1e9f9; }
+.slider .thumb { -fx-background-color: -fx-accent; }
+.slider .track { -fx-background-color: #d1e9f9; }
+.menu:hover, .menu-item:hover { -fx-background-color: #d1e9f9; }
+
+/* --- NUEVA SECCIÓN: Estilos para el Campo de Búsqueda --- */
+.text-field {
+    /* Define un borde sutil para el estado normal */
+    -fx-border-color: #cdd8e3;
+    -fx-border-radius: 3;
+}
+
+.text-field:focused {
+    /* Al seleccionar, el borde se vuelve del color de acento y más grueso */
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    /* Añade un sutil efecto de brillo interior para destacarlo más */
+    -fx-effect: innershadow(gaussian, #1DA1F233, 5, 0, 0, 0);
+}
+/* --- FIN DE LA NUEVA SECCIÓN --- */

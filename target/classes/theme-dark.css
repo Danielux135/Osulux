@@ -1,0 +1,77 @@
+/* src/main/resources/theme-dark.css */
+.root {
+    -fx-base: #3c3f41;
+    -fx-background: #3c3f41;
+    -fx-control-inner-background: #45494a;
+    -fx-accent: #0096c9;
+    -fx-default-button: #505355;
+    -fx-focus-color: #0096c9;
+    -fx-faint-focus-color: #0096c922;
+    -fx-text-background-color: #e0e0e0;
+}
+.menu-bar, .context-menu {
+    -fx-background-color: derive(-fx-base, -5%);
+}
+.menu .label, .menu-item .label, .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+.split-pane {
+    -fx-background-color: #2b2b2b;
+}
+.list-view {
+    -fx-background-color: #45494a;
+}
+.list-cell {
+    -fx-padding: 3px 5px;
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    -fx-background-color: #505355;
+}
+.list-cell:even {
+    -fx-background-color: transparent;
+}
+.list-cell:filled:hover {
+    -fx-background-color: #616466;
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #5A5D5E;
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent;
+    -fx-text-fill: white;
+}
+.button {
+    -fx-background-color: -fx-default-button;
+    -fx-text-fill: -fx-text-background-color;
+}
+.button:hover {
+    -fx-background-color: #616466;
+}
+.slider .thumb {
+    -fx-background-color: -fx-accent;
+}
+.slider .track {
+    -fx-background-color: #505355;
+}
+.menu:hover, .menu-item:hover {
+    -fx-background-color: #505355;
+}
+
+/* --- NUEVA SECCIÓN: Estilos para el Campo de Búsqueda --- */
+.text-field {
+    /* El texto que el usuario escribe será del color principal */
+    -fx-text-fill: -fx-text-background-color;
+    /* El texto del marcador de posición será un gris claro */
+    -fx-prompt-text-fill: #9E9E9E;
+    /* Un borde sutil para que el campo sea visible */
+    -fx-border-color: #2b2b2b;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #0096c933, 5, 0, 0, 0);
+}
+/* --- FIN DE LA NUEVA SECCIÓN --- */

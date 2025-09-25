@@ -10,6 +10,7 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DialogPane; // <-- IMPORTACIÓN NUEVA
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
@@ -32,6 +33,10 @@ public class PlaylistHelper {
     private Runnable onPlaylistsChangedCallback;
     private boolean blockSelectionListener = false;
 
+    // --- NUEVA VARIABLE ---
+    // Guardará una referencia a los estilos (CSS) de la ventana principal.
+    private ObservableList<String> parentStylesheets;
+
     public PlaylistHelper(PlaylistManager playlistManager, ExportManager exportManager) {
         this.playlistManager = playlistManager;
         this.exportManager = exportManager;
@@ -49,8 +54,11 @@ public class PlaylistHelper {
         this.onPlaylistsChangedCallback = onPlaylistsChangedCallback;
     }
 
-    public VBox initialize(Consumer<String> onPlaylistSelectedCallback) {
+    // --- MÉTODO initialize MODIFICADO ---
+    // Ahora acepta los stylesheets de la escena principal como segundo argumento.
+    public VBox initialize(Consumer<String> onPlaylistSelectedCallback, ObservableList<String> parentStylesheets) {
         this.onPlaylistSelectedCallback = onPlaylistSelectedCallback;
+        this.parentStylesheets = parentStylesheets; // Guardamos la referencia
         setupListView();
         setupButtonActions();
         refreshPlaylistList();
@@ -134,6 +142,10 @@ public class PlaylistHelper {
         dialog.setTitle("Nueva Playlist");
         dialog.setHeaderText(null);
         dialog.setContentText("Nombre de la playlist:");
+        
+        // --- ESTA ES LA MAGIA ---
+        // Copiamos los archivos de estilo (CSS) de la ventana principal al cuadro de diálogo.
+        applyStylesToDialog(dialog.getDialogPane());
 
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(name -> {
@@ -145,9 +157,21 @@ public class PlaylistHelper {
                 alert.setTitle("Nombre inválido");
                 alert.setHeaderText(null);
                 alert.setContentText("El nombre de la playlist no es válido o ya existe.");
+                
+                // Aplicamos los estilos también a la alerta.
+                applyStylesToDialog(alert.getDialogPane());
+                
                 alert.showAndWait();
             }
         });
+    }
+
+    // --- NUEVO MÉTODO AUXILIAR ---
+    // Un método reutilizable para aplicar los estilos a cualquier panel de diálogo.
+    private void applyStylesToDialog(DialogPane dialogPane) {
+        if (this.parentStylesheets != null) {
+            dialogPane.getStylesheets().addAll(this.parentStylesheets);
+        }
     }
 
     public void refreshPlaylistList() {

@@ -1,4 +1,5 @@
 com\osuplayer\DialogHelper.class
+com\osuplayer\DiscordRichPresence.class
 com\osuplayer\PlaylistManager.class
 com\osuplayer\SearchManager.class
 com\osuplayer\PlaybackHelper.class
