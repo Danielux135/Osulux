@@ -5,6 +5,10 @@
 *.iml
 *.ipr
 
+# GIT
+*.patch
+*.diff
+
 # JAVA
 *.class
 
@@ -17,6 +21,10 @@
 lib/
 target/
 runtime/
+
+# APP
+config/
+discord-ipc-*
 
 # SYSTEM
 .DS_Store

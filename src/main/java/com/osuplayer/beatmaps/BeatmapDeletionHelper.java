@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import com.osuplayer.config.ConfigManager;
 import com.osuplayer.lang.I18n;
 import com.osuplayer.ui.ThemeHelper;
-import com.osuplayer.util.IconResources;
+import com.osuplayer.dependencies.IconDependencyProvider;
 
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
@@ -144,7 +144,7 @@ public class BeatmapDeletionHelper {
             return;
         }
         if (fallbackIcon == null) {
-            fallbackIcon = IconResources.loadImage();
+            fallbackIcon = IconDependencyProvider.getOrNull();
         }
         if (fallbackIcon != null) {
             alertStage.getIcons().setAll(fallbackIcon);

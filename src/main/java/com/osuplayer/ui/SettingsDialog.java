@@ -9,7 +9,7 @@ import com.osuplayer.lang.I18n;
 import com.osuplayer.lang.LanguageBindings;
 import com.osuplayer.lang.LanguageManager;
 import com.osuplayer.lang.LanguagePack;
-import com.osuplayer.util.IconResources;
+import com.osuplayer.dependencies.IconDependencyProvider;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -357,7 +357,7 @@ public class SettingsDialog {
 
     private static Image getFallbackIcon() {
         if (fallbackIcon == null) {
-            fallbackIcon = IconResources.loadImage();
+            fallbackIcon = IconDependencyProvider.getOrNull();
         }
         return fallbackIcon;
     }

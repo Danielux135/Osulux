@@ -17,8 +17,8 @@ import com.osuplayer.config.ConfigManager;
 import com.osuplayer.lang.I18n;
 import com.osuplayer.lang.LanguageManager;
 import com.osuplayer.playback.MusicManager;
-import com.osuplayer.util.AppInfo;
-import com.osuplayer.util.IconResources;
+import com.osuplayer.common.ApplicationMetadata;
+import com.osuplayer.dependencies.IconDependencyProvider;
 
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -48,8 +48,8 @@ public final class AboutDialog {
     private static final double EMAIL_DIALOG_MIN_WIDTH = 380d;
     private static final String CONTACT_EMAIL = "danielux135@gmail.com";
     private static final String PAYPAL_URL = "https://www.paypal.com/donate?business=" + CONTACT_EMAIL;
-    private static final String TWITCH_URL = "https://www.twitch.tv/" + AppInfo.REPOSITORY_OWNER.toLowerCase(Locale.ROOT);
-    private static final String YOUTUBE_URL = "https://www.youtube.com/@" + AppInfo.REPOSITORY_OWNER;
+    private static final String TWITCH_URL = "https://www.twitch.tv/" + ApplicationMetadata.REPOSITORY_OWNER.toLowerCase(Locale.ROOT);
+    private static final String YOUTUBE_URL = "https://www.youtube.com/@" + ApplicationMetadata.REPOSITORY_OWNER;
     private static final String DISCORD_URL = "https://discord.com/users/289066436301946880";
     private static Image fallbackAppIcon;
 
@@ -65,7 +65,7 @@ public final class AboutDialog {
         stage.setTitle(I18n.tr("Acerca de Osulux"));
         String themeId = configManager.getTheme();
 
-        Label versionLabel = new Label(I18n.trf("Versión: %s", AppInfo.VERSION));
+        Label versionLabel = new Label(I18n.trf("Versión: %s", ApplicationMetadata.VERSION));
         versionLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
         versionLabel.setMaxWidth(Double.MAX_VALUE);
         versionLabel.setAlignment(Pos.CENTER);
@@ -376,7 +376,7 @@ public final class AboutDialog {
 
     private static Image getFallbackIcon() {
         if (fallbackAppIcon == null) {
-            fallbackAppIcon = IconResources.loadImage();
+            fallbackAppIcon = IconDependencyProvider.getOrNull();
         }
         return fallbackAppIcon;
     }

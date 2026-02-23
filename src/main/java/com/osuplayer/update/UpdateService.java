@@ -14,7 +14,7 @@ import java.util.Locale;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.osuplayer.util.AppInfo;
+import com.osuplayer.common.ApplicationMetadata;
 import com.osuplayer.lang.I18n;
 import com.osuplayer.ui.ProgressDialog;
 import com.osuplayer.ui.ThemeHelper;
@@ -60,7 +60,7 @@ public class UpdateService {
             switch (result.status()) {
                 case UP_TO_DATE -> showAlert(owner, Alert.AlertType.INFORMATION,
                         I18n.tr("Actualizaciones"),
-                        I18n.trf("Ya tienes la última versión (%s).", AppInfo.VERSION),
+                        I18n.trf("Ya tienes la última versión (%s).", ApplicationMetadata.VERSION),
                         themeId);
                 case UPDATED -> showAlert(owner, Alert.AlertType.INFORMATION,
                         I18n.tr("Actualizaciones"),
@@ -92,10 +92,10 @@ public class UpdateService {
     }
 
     private UpdateInfo fetchLatestRelease() throws IOException {
-        String url = String.format(Locale.ROOT, RELEASES_URL, AppInfo.REPOSITORY_OWNER, AppInfo.REPOSITORY_NAME);
+        String url = String.format(Locale.ROOT, RELEASES_URL, ApplicationMetadata.REPOSITORY_OWNER, ApplicationMetadata.REPOSITORY_NAME);
         HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
         connection.setRequestProperty("Accept", "application/vnd.github+json");
-        connection.setRequestProperty("User-Agent", "Osulux-" + AppInfo.VERSION);
+        connection.setRequestProperty("User-Agent", "Osulux-" + ApplicationMetadata.VERSION);
         int status = connection.getResponseCode();
         if (status != 200) {
             throw new IOException(I18n.trf("GitHub respondió con código %s", status));
@@ -125,7 +125,7 @@ public class UpdateService {
 
     private Path downloadAsset(UpdateInfo info, ProgressDialog dialog) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) URI.create(info.downloadUrl()).toURL().openConnection();
-        connection.setRequestProperty("User-Agent", "Osulux-" + AppInfo.VERSION);
+        connection.setRequestProperty("User-Agent", "Osulux-" + ApplicationMetadata.VERSION);
         long contentLength = connection.getContentLengthLong();
         Path tempDir = Files.createTempDirectory("osulux-update");
         Path targetFile = tempDir.resolve(info.assetName());
@@ -179,7 +179,7 @@ public class UpdateService {
 
     private boolean isNewerVersion(String latestVersion) {
         String[] latestParts = cleanVersion(latestVersion).split("\\.");
-        String[] currentParts = cleanVersion(AppInfo.VERSION).split("\\.");
+        String[] currentParts = cleanVersion(ApplicationMetadata.VERSION).split("\\.");
         int length = Math.max(latestParts.length, currentParts.length);
         for (int i = 0; i < length; i++) {
             int latest = i < latestParts.length ? parseInt(latestParts[i]) : 0;

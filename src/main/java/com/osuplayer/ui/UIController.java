@@ -33,7 +33,7 @@ import com.osuplayer.shortcuts.ShortcutAction;
 import com.osuplayer.shortcuts.ShortcutManager;
 import com.osuplayer.shortcuts.ShortcutPreferencesDialog;
 import com.osuplayer.update.UpdateService;
-import com.osuplayer.util.IconResources;
+import com.osuplayer.dependencies.IconDependencyProvider;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -225,7 +225,7 @@ public class UIController {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Osulux");
         if (primaryStage.getIcons().isEmpty()) {
-            Image appIcon = IconResources.loadImage();
+            Image appIcon = IconDependencyProvider.getOrNull();
             if (appIcon != null) {
                 primaryStage.getIcons().add(appIcon);
             }

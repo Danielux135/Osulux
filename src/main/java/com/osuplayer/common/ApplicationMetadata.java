@@ -1,10 +1,7 @@
-package com.osuplayer.util;
+package com.osuplayer.common;
 
-public final class AppInfo {
-
+public class ApplicationMetadata {
     public static final String VERSION = "2.0.0";
     public static final String REPOSITORY_OWNER = "Danielux135";
     public static final String REPOSITORY_NAME = "Osulux";
-
-    private AppInfo() {}
 }
